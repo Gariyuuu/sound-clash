@@ -12,32 +12,41 @@ In this order: `CLAUDE.md` (full operating manual) → `PROJECT_STATE.md` (exact
 
 ## What is the current task?
 
-None actively in progress. Six sessions happened across 2026-08-06/07. The fifth migrated the entire backend off Supabase onto Neon + Drizzle + Clerk + Ably, at the user's explicit request (they hit Supabase account limits across their *other* projects — not a problem with this one specifically). The sixth (most recent) **provisioned real infrastructure and deployed to production**: Neon + Clerk via the Vercel CLI's marketplace-integration commands (`vercel integration add neon`/`clerk`), Ably via a manually-supplied key, then `db:push` + `db:seed` + `vercel --prod`. The app is now live at https://sound-clash-nu.vercel.app, with room creation/joining verified against it via direct API calls. The single remaining priority is: **play a real two-device game against that URL** — see `TASKS.md`'s "Next up." Every individual piece has been verified (DB writes persist, Ably token minting works, a `publish()` call succeeds), but nothing has confirmed a second browser actually *receives and renders* a realtime event yet.
+None actively in progress. **This doc was refreshed 2026-08-07 as a checkpoint/verification pass** (re-verify docs against real code, check git state, scan for secrets, fix cross-doc contradictions — no product feature work). See "Documentation debt discovered this pass" below before trusting the session count in the next section — it's real and it's the most actionable finding here.
 
 ## What was the previous agent doing?
 
-Six sessions across 2026-08-06/07, in order:
+At least eight sessions of real work exist in this repo, though only seven are written up in `SESSION_LOG.md`:
 1. Built most of the product, paused mid-way through wiring the live gameplay screen for a documentation audit.
 2. A documentation-only "account-switch checkpoint" session — no product code changed.
 3. Resumed feature work: fixed four build-blocking bugs and built the full live gameplay screen and results/podium screen.
 4. Implemented leaderboards, profile, settings, patch notes, achievement unlock logic, Team Battle, Spotify integration, public room browsing, ready-status, typing indicators, and synthesized sound effects — plus fixed two real bugs.
 5. Full backend migration: Supabase → Neon (Postgres via Drizzle ORM), Supabase Auth → Clerk, Supabase Realtime → Ably. Every API route, every game-logic module, auth, and realtime were rewritten. Found and fixed a genuine third-party build bug in `ably`'s bundled output (see `DECISIONS.md` D-013).
-6. **This most recent session** — provisioned real Neon/Clerk/Ably infrastructure via the Vercel CLI's marketplace-integration commands, ran `db:push`/`db:seed`, and deployed to production. Verified room creation/joining and Ably token-minting/publishing against the live URL via direct API calls.
+6. Provisioned real Neon/Clerk/Ably infrastructure via the Vercel CLI's marketplace-integration commands, ran `db:push`/`db:seed`, and deployed to production. Verified room creation/joining and Ably token-minting/publishing against the live URL via direct API calls.
+7. Fixed a Clerk sign-in/sign-up routing bug, added sign-out access to every standalone page, built a circular theme-wheel background picker, added a full Play-vs-AI mode.
+8. **Not written up anywhere until this pass:** `git log` shows four more real, committed changes after session 7 — a Career Mode entry point + 10-genre filtering, a YouTube-overlay answer-leak fix, background presets expanded 14→20 + AI-timing/buzz-timer tuning, and a scoreboard live-update bug fix + redesign. See `PROJECT_STATE.md`'s "Documentation gap" for exact commit hashes and one-line summaries per commit.
+
+**Also discovered and corrected this pass:** the repo now has its own real git history and a GitHub remote (`https://github.com/Gariyuuu/sound-clash.git`) — every prior doc's "no git repo exists anywhere" claim (in `CLAUDE.md`, `DEPLOYMENT.md`, `CHANGELOG.md`, and earlier `SESSION_LOG.md` entries) was accurate when written but is now stale. Fixed in `CLAUDE.md`/`PROJECT_STATE.md`/`DEPLOYMENT.md`/`CHANGELOG.md` this pass.
 
 ## What works right now?
 
-Everything compiles, type-checks, lints cleanly, and is now confirmed working against **real, live infrastructure**, not just static analysis: the app is deployed at https://sound-clash-nu.vercel.app, a real room was created and persisted via the live API, and a real Ably `publish()` call succeeded server-side. **What's not yet confirmed:** an actual human playing a two-device game — nothing has verified that a realtime event published by one client is correctly *received and rendered* by another client's browser. That's the next real gap, not "does the backend work at all" (which is now settled).
+Everything compiles, type-checks, lints cleanly (re-verified this pass: `tsc` 0 errors, `lint` 0 findings, `build` exit 0, 44 routes), and is confirmed working against **real, live infrastructure**: the app is deployed at https://sound-clash-nu.vercel.app, a real room was created and persisted via the live API, and a real Ably `publish()` call succeeded server-side. Neon/Drizzle/Clerk/Ably are all genuinely wired into the code (verified via `grep` across `src/`, not just `package.json` dependency listings), and the `ably`/SWC build-bug workaround (`next.config.ts` + `scripts/webpack/fix-ably-super.cjs`) is still in place and still required. **What's not yet confirmed:** an actual human playing a two-device game — nothing has verified that a realtime event published by one client is correctly *received and rendered* by another client's browser.
 
 ## What is broken?
 
-Nothing known — `tsc`/`lint`/`build` are all clean, and the live deployment responds correctly to every request tested so far. What's still genuinely missing (not broken, just not built, deliberately): the admin dashboard, true audio manipulation for two game modes, real recorded sound effects, an achievement-unlock UI moment, a match-history replay-timeline viewer. Known gaps from the migration: no database-level defense layer (RLS-equivalent) exists anymore, the `room_players.profile_id`/`guest_id` XOR invariant is no longer a database CHECK constraint, and the Clerk webhook (`profiles` row auto-creation on sign-up) isn't registered yet — guest play is unaffected by that last one.
+Nothing known — `tsc`/`lint`/`build` are all clean. What's still genuinely missing (not broken, just not built, deliberately): the admin dashboard, true audio manipulation for two game modes, real recorded sound effects, an achievement-unlock UI moment, a match-history replay-timeline viewer. Known gaps: no database-level defense layer (RLS-equivalent) exists anymore, the `room_players.profile_id`/`guest_id` XOR invariant is no longer a database CHECK constraint, and the Clerk webhook (`profiles` row auto-creation on sign-up) isn't registered yet — guest play is unaffected by that last one.
+
+## Documentation debt discovered this pass
+
+Four real, committed, working commits (Career Mode, genre filtering, YouTube-overlay fix + background expansion + AI/buzz-timer tuning, scoreboard fix + redesign) have no `SESSION_LOG.md` entry and are absent from `FEATURES.md`/`UI_SYSTEM.md`/`API_REFERENCE.md`. This checkpoint fixed the clearest resulting factual errors (background-count mentions, git-state claims) but did not write the full feature docs — that's real, scoped work for whoever picks this up next. See `TASKS.md`'s "High priority" and `PROJECT_STATE.md`'s "Documentation gap" for specifics.
 
 ## What should I do next?
 
-1. **Play a real two-device game** against https://sound-clash-nu.vercel.app — create a room on one device, join from another, go through a full round. This is the one thing that's still purely theoretical.
-2. Register the Clerk webhook (`https://sound-clash-nu.vercel.app/api/webhooks/clerk`, subscribed to `user.created`) in the Clerk Dashboard, so signed-in accounts start getting profiles/XP/leaderboard entries. Optional, not blocking.
-3. Fix whatever the two-device test surfaces. Given the prior session rewrote the entire backend mechanically, treat every route as at-risk, not just the historically-tricky spots.
-4. If everything checks out, re-add a database-level CHECK constraint for the `profile_id`/`guest_id` XOR invariant (see `TASKS.md`), then move to the "Post-MVP" polish items in `ROADMAP.md`.
+1. **Write up the four undocumented commits** — a `SESSION_LOG.md` entry plus `FEATURES.md`/`API_REFERENCE.md` sections for Career Mode and genre filtering. Low-risk, high-value: the code already works, this is pure catch-up.
+2. **Play a real two-device game** against https://sound-clash-nu.vercel.app — create a room on one device, join from another, go through a full round. This is the one thing that's still purely theoretical.
+3. Register the Clerk webhook (`https://sound-clash-nu.vercel.app/api/webhooks/clerk`, subscribed to `user.created`) in the Clerk Dashboard, so signed-in accounts start getting profiles/XP/leaderboard entries. Optional, not blocking.
+4. Fix whatever the two-device test surfaces. Given how much of the backend was rewritten wholesale in session 5, treat every route as at-risk, not just the historically-tricky spots.
+5. If everything checks out, re-add a database-level CHECK constraint for the `profile_id`/`guest_id` XOR invariant (see `TASKS.md`), then move to the "Post-MVP" polish items in `ROADMAP.md`.
 
 ## Which files are most important?
 
@@ -72,33 +81,50 @@ npm run build                 # should exit 0 — matches what Vercel would do (
 
 ```
 Read CLAUDE.md, PROJECT_STATE.md, and TASKS.md in full before doing anything
-else. Then run `cd /Users/gariyuu/Projects/sound-clash && pwd`, `git status`,
-`npx tsc --noEmit`, `npm run lint`, and `npm run build` yourself to verify
-the documented current state is still accurate — as of this writing all four
-are clean, with ~40 routes generated. `.env.local` has real, live Neon/
-Clerk/Ably credentials (confirmed working, not placeholders), and the app is
-deployed at https://sound-clash-nu.vercel.app.
+else — PROJECT_STATE.md's "Documentation gap" section at the top and
+"Git state" section are both load-bearing corrections from a 2026-08-07
+checkpoint pass, read them first. Then run
+`cd /Users/gariyuu/Projects/sound-clash && pwd`, `git status`,
+`git log --oneline -5`, `npx tsc --noEmit`, `npm run lint`, and
+`npm run build` yourself to verify the documented current state is still
+accurate — as of this writing all are clean, 44 routes generated. This repo
+now has its own real git history and a GitHub remote
+(https://github.com/Gariyuuu/sound-clash.git, branch main, clean, up to date
+with origin) — do NOT trust any older doc text claiming "no git repo exists"
+or "repository root is the parent ~/Projects tree," that was true through
+session six but is stale. `.env.local` has real, live Neon/Clerk/Ably
+credentials (confirmed working, not placeholders), and the app is deployed
+at https://sound-clash-nu.vercel.app.
 
 Summarize your understanding of the project and its current state back to
 me before making any edits. If you find the documentation is stale or
 contradicts what you observe in the code or command output, say so
-explicitly rather than silently trusting either source.
+explicitly rather than silently trusting either source — this repo has a
+real history of docs drifting behind committed code (see "Documentation
+debt" below), so re-verify rather than assume.
 
-The backend was migrated from Supabase to Neon + Drizzle + Clerk + Ably
-(user's explicit request, rate-limited on Supabase across other projects),
-then real infrastructure was provisioned via the Vercel CLI's marketplace-
-integration commands and deployed to production. Room creation/joining and
-Ably publish/token-minting were verified against the live URL via direct API
-calls — but NO ONE HAS PLAYED AN ACTUAL TWO-DEVICE GAME YET. That is the
-single most important next action: open the live URL on two devices, create
-a room, join it, and play a full round (buzz, answer, steal, results),
-confirming realtime events published by one client are actually received
-and rendered by the other. Everything else — the entire spec'd feature
-surface (buzzer gameplay, steal rounds, 12 modes, YouTube/Spotify, hints,
-achievements, XP/levels, leaderboards, profile, settings, patch notes,
-public rooms, ready-status, typing, sound effects) — is implemented and
-passes tsc/lint/build, and the backend is confirmed live, but this one
-verification step has never happened.
+Two things are true simultaneously and both matter:
+
+1. **Documentation debt is the most actionable open item.** Four real,
+   committed, working changes (a Career Mode entry point + 10-genre
+   filtering, a YouTube-overlay answer-leak fix, background presets expanded
+   14->20 plus AI-opponent/buzz-timer tuning, and a scoreboard live-update
+   bug fix + redesign) exist in `git log` with NO SESSION_LOG.md entry and
+   NO FEATURES.md/UI_SYSTEM.md/API_REFERENCE.md write-up. See
+   PROJECT_STATE.md's "Documentation gap" for exact commit hashes. Writing
+   this up properly (a SESSION_LOG.md entry, a FEATURES.md Career Mode
+   section, API_REFERENCE.md entries) is low-risk, high-value, and should
+   probably happen before or alongside anything else.
+
+2. **The single most important unverified runtime step, unchanged for
+   several sessions:** NO ONE HAS PLAYED AN ACTUAL TWO-DEVICE GAME through
+   the real UI yet. Open the live URL on two devices, create a room, join
+   it, and play a full round (buzz, answer, steal, results), confirming
+   realtime events published by one client are actually received and
+   rendered by the other. Everything else — the entire spec'd feature
+   surface, now including Career Mode and Play-vs-AI — passes tsc/lint/
+   build and the backend is confirmed live via direct API calls, but this
+   verification step has never happened.
 
 Secondary, non-blocking: the Clerk webhook isn't registered yet, so signed-
 in accounts don't get profiles/leaderboard entries (guest play is fine).
@@ -110,10 +136,14 @@ songs-answer-secrecy design (now code-discipline-only, no RLS backstop —
 see SECURITY.md), the Drizzle schema's naming/timestamp/ID conventions in
 src/lib/db/schema.ts, the single scoring implementation in
 lib/scoring/engine.ts, the Next.js version pin, the ably build-bug
-workaround in next.config.ts, or reintroduce Firebase or Supabase, without
-flagging it to me first — all of these are deliberate, documented decisions
-(see DECISIONS.md, especially D-013), not oversights.
+workaround in next.config.ts (still required — the underlying ably parser
+bug has not been fixed upstream, re-verified 2026-08-07), or reintroduce
+Firebase or Supabase, without flagging it to me first — all of these are
+deliberate, documented decisions (see DECISIONS.md, especially D-013), not
+oversights.
 
 After completing each task, update PROJECT_STATE.md, TASKS.md, and append an
-entry to SESSION_LOG.md, per the "Permanent rules" in CLAUDE.md.
+entry to SESSION_LOG.md, per the "Permanent rules" in CLAUDE.md. Do not let
+committed code outrun the docs again — that's exactly the gap this checkpoint
+found and partially closed.
 ```

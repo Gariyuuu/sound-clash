@@ -58,7 +58,7 @@ No custom domain — the app is live on its Vercel-assigned domain, https://soun
 
 ## Preview deployments
 
-Vercel's standard PR-preview-deployment behavior would apply automatically once the project is connected to a Git remote — recall from `PROJECT_STATE.md` that this project has no git history and no remote yet, so this isn't available today either.
+Vercel's standard PR-preview-deployment behavior would apply automatically once the Vercel *project* is connected to the Git *remote* for auto-deploy-on-push. **Corrected 2026-08-07:** this repo does now have real git history and a real GitHub remote (`https://github.com/Gariyuuu/sound-clash.git`, see `PROJECT_STATE.md`'s "Git state") — but whether the Vercel project itself has been connected to that remote for push-triggered deploys is unconfirmed (not checked this pass). Verify with `vercel git ls` or the Vercel dashboard before assuming push-to-deploy works; as far as is confirmed, deploys still happen via `vercel --prod` run locally.
 
 ## Storage setup
 
@@ -106,6 +106,6 @@ None implemented — no `/api/health` or similar endpoint exists.
 - [ ] Clerk application created ✅, webhook endpoint configured and pointed at the deployed URL ⬜ (not done yet)
 - [x] Ably application created
 - [x] All required env vars set in Vercel project settings (`DATABASE_URL`, Clerk keys, `ABLY_API_KEY` — `CLERK_WEBHOOK_SIGNING_SECRET` still pending, see above)
-- [ ] Vercel project connected to a Git remote — still not done; this repo has no git history (see `PROJECT_STATE.md`'s git-state note), so the current deployment was pushed via `vercel --prod` directly from the local directory, not via a Git-triggered deploy. Fine for now, but means no automatic redeploy-on-push and no preview deployments per branch.
+- [ ] Vercel project connected to a Git remote for auto-deploy-on-push — **unconfirmed either way as of 2026-08-07** (not "still not done": the repo now has a real GitHub remote, `https://github.com/Gariyuuu/sound-clash.git` — see `PROJECT_STATE.md`'s git-state note — but whether Vercel's project settings point at it has not been checked). Deploys are confirmed to happen via `vercel --prod` run locally, at minimum. Verify the Vercel↔GitHub link before assuming either push-to-deploy or manual-only is accurate.
 - [x] First deploy succeeds — live at https://sound-clash-nu.vercel.app
 - [ ] Post-deployment verification steps above fully completed (2/5 done — see above)

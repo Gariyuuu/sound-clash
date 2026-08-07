@@ -7,11 +7,14 @@ entries. Update this file whenever a task's status changes.
 
 ## Current task
 
-**None actively in progress.** As of 2026-08-07 (seventh session), fixed a Clerk sign-in/sign-up routing bug, added sign-out access to every standalone page (was landing-page-only), built a circular "theme wheel" background picker for `/settings`, and added a full Play-vs-AI mode (a synthetic `room_players` bot that buzzes in and answers on its own, difficulty-configurable). Deployed to production. See `SESSION_LOG.md`'s latest entry for full detail.
+**None actively in progress.** As of 2026-08-07 (checkpoint/verification pass), re-verified the repo against real code and fixed cross-doc contradictions — no product features were added this pass. Before this checkpoint, the seventh session (also 2026-08-07) fixed a Clerk sign-in/sign-up routing bug, added sign-out access to every standalone page (was landing-page-only), built a circular "theme wheel" background picker for `/settings`, and added a full Play-vs-AI mode (a synthetic `room_players` bot that buzzes in and answers on its own, difficulty-configurable). Deployed to production. See `SESSION_LOG.md`'s latest entry for full detail on that session.
+
+**Important — documentation debt found by this checkpoint:** `git log` shows **four more commits after the seventh session that have no `SESSION_LOG.md` entry and no `FEATURES.md`/`UI_SYSTEM.md`/`API_REFERENCE.md` write-up**: a Career Mode entry point + 10-genre filtering (`src/app/career/`, `src/lib/game/career.ts`), a YouTube-overlay answer-leak fix, background presets expanded 14→20 + AI-opponent timing softened + buzz timer default/max raised (10s→20s/20s→30s), and a scoreboard live-update bug fix + redesign + mid-game timer control. The code is real, committed, and passes `tsc`/`lint`/`build` — it's just undocumented. See `PROJECT_STATE.md`'s "Documentation gap" section for exact commit hashes. **This is now higher priority than more feature work** — see "High priority" below.
 
 ## Next up
 
-**Play a real game through the actual UI in a browser** — still the one thing unverified across every recent session. The AI opponent specifically has only been tested via direct API calls simulating what the host's browser does (`POST .../ai-turn`), not through a real rendered `gameplay-view.tsx` — confirm the bot visibly buzzes in and answers within the UI, not just that the endpoint works. Also still open: a real two-device human game, and registering the Clerk webhook (optional — guest play and AI-mode both work without it).
+1. **Write up the four undocumented commits** in `SESSION_LOG.md` (as a proper entry, or several) and update `FEATURES.md` (add a Career Mode section), `UI_SYSTEM.md` (background count already corrected this pass, but Career Mode's UI isn't described anywhere), and `API_REFERENCE.md` (no career/genre-filter endpoints documented). See `PROJECT_STATE.md`'s "Documentation gap" for what to cover.
+2. **Play a real game through the actual UI in a browser** — still the one thing unverified across every recent session. The AI opponent specifically has only been tested via direct API calls simulating what the host's browser does (`POST .../ai-turn`), not through a real rendered `gameplay-view.tsx` — confirm the bot visibly buzzes in and answers within the UI, not just that the endpoint works. Also still open: a real two-device human game, and registering the Clerk webhook (optional — guest play and AI-mode both work without it).
 
 ## Blocked
 
@@ -33,6 +36,7 @@ All of the above passed `npx tsc --noEmit` (0 errors), `npm run lint` (0 finding
 
 ## High priority
 
+- **Document the four undecided/undocumented commits** (Career Mode, genre filtering, background expansion, scoreboard fix — see "Current task"/"Next up" above and `PROJECT_STATE.md`'s "Documentation gap"). Low risk, high value — the code already works, this is pure catch-up so the next account doesn't have to re-discover it via `git log`.
 - **Play a real two-device game against https://sound-clash-nu.vercel.app** (see "Next up" above) — the last unverified piece. Infrastructure is confirmed live and individually working; a receiving-end realtime test (does a second browser actually see the buzz/score/chat events) has not happened yet.
 - **Configure the Clerk webhook** — `/api/webhooks/clerk` has never received a real request. Not blocking gameplay (guest play works fine without it), but needed before any signed-in account gets a `profiles` row / persistent XP / leaderboard entry.
 - **Ably `publish()` calls confirmed to succeed server-side** (no error) via the `join` route on both local dev and production — still need to confirm a subscribed client actually *receives and renders* one of these events correctly (buzz lock, round transition, chat, typing).
@@ -78,7 +82,9 @@ Everything — see `TESTING.md`. Still no automated test runner configured. The 
 
 ## Documentation needed
 
-All memory files were updated this session to reflect the new stack (`CLAUDE.md`, `PROJECT_STATE.md`, `TASKS.md`, `DATABASE.md`, `ARCHITECTURE.md`, `SECURITY.md`, `DEPLOYMENT.md`, `DECISIONS.md`, `SESSION_LOG.md`). `API_REFERENCE.md`, `FEATURES.md`, `FILE_MAP.md`, `HANDOFF.md`, `README.md`, `ROADMAP.md`, `TESTING.md`, `UI_SYSTEM.md`, `CHANGELOG.md` had their Supabase-specific mentions updated in place (env vars, auth provider references) without a full rewrite, since their non-stack content (features, UI, file structure) was unaffected. Keep them current per `CLAUDE.md`'s "Permanent rules" going forward.
+(Historical, fifth session:) All memory files were updated then to reflect the new stack (`CLAUDE.md`, `PROJECT_STATE.md`, `TASKS.md`, `DATABASE.md`, `ARCHITECTURE.md`, `SECURITY.md`, `DEPLOYMENT.md`, `DECISIONS.md`, `SESSION_LOG.md`). `API_REFERENCE.md`, `FEATURES.md`, `FILE_MAP.md`, `HANDOFF.md`, `README.md`, `ROADMAP.md`, `TESTING.md`, `UI_SYSTEM.md`, `CHANGELOG.md` had their Supabase-specific mentions updated in place without a full rewrite.
+
+**Currently needed (found by the 2026-08-07 checkpoint pass):** `FEATURES.md` needs a Career Mode section (doesn't exist at all today), `API_REFERENCE.md` needs entries for whatever Career Mode's data-fetching uses plus the genre-filter query params on the playlist picker, `SESSION_LOG.md` needs an entry (or several) covering the four undocumented commits described in "Current task" above. `TESTING.md`'s manual checklist still needs updating for the Clerk/Ably stack (flagged since the fifth session, still not done) and now also for Career Mode/AI opponent/theme wheel.
 
 ## Rejected ideas
 

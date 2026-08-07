@@ -1,9 +1,22 @@
 # Project State
 
-**Last updated:** 2026-08-07 (sixth session — real infrastructure provisioned, deployed to Vercel, and runtime-verified end to end)
+**Last updated:** 2026-08-07 (checkpoint/verification pass — see "Documentation gap" below; this pass did not do product feature work, only verification + doc corrections)
 
 This file is a point-in-time snapshot. It will go stale the moment more work
 happens — update it every session (see `CLAUDE.md` → "Permanent rules").
+
+---
+
+## Documentation gap — read this before trusting anything below labeled "sixth session"
+
+`git log` (see "Git state" below) proves more work happened after the sixth-session snapshot this file used to describe as current, and after the seventh session that `TASKS.md`/`SESSION_LOG.md` do cover. **Four commits exist with no corresponding `SESSION_LOG.md` entry and no `FEATURES.md`/`UI_SYSTEM.md`/`API_REFERENCE.md` updates:**
+
+1. `c2c6c9c` — Hide YouTube video overlay during gameplay (fixed an answer-leak: the embed showed title/channel even with `controls=0`), add Career Mode entry point (`src/app/career/page.tsx`, wired to the homepage).
+2. `8c1c4f7` — Add genre filtering to Career Mode (10 genres: Pop, Hip-Hop, Rock, R&B, Country, Electronic, K-Pop, Latin, Indie, Oldies) and to the room lobby's playlist picker, plus a genre tag field on playlist import.
+3. `34a189e` — Soften AI opponent buzz timing (widened per-difficulty delay windows), raise buzz timer default/max (10s→20s / 20s→30s), expand background presets 14→20 (added Aurora, Desert, Midnight City, Sakura, Volcano, Frost, each with a 5-color palette) plus a procedural grain overlay.
+4. `d17c6c8` — Fix a real bug: several score/streak/spectator changes (timeout penalties especially) either published to the wrong Ably channel/event or never published at all, so the scoreboard only updated on refresh. Also a scoreboard visual redesign (medal ranks, live relative-score bars, flash/slide animation on change) and a mid-game buzz-timer adjustment control for the host.
+
+This checkpoint pass verified the **code compiles/lints/builds** (which covers this work, since it's already committed) and fixed the clearest cross-doc factual errors this gap caused (background count, git-state claims — see below), but did **not** write full `FEATURES.md`/`UI_SYSTEM.md`/`API_REFERENCE.md` entries for Career Mode, genre filtering, or the scoreboard redesign — that's real, scoped work for whoever picks this up next. Until then, treat `FEATURES.md`'s feature list as **incomplete** (missing Career Mode entirely) rather than wrong-but-otherwise-trustworthy.
 
 ---
 
@@ -22,11 +35,22 @@ Real Neon, Clerk, and Ably resources were provisioned this session (via the Verc
 
 ## Git state
 
-- **Repository root for git purposes:** `~/Projects` (the parent directory), not `~/Projects/sound-clash` itself. `sound-clash` has no independent `.git`.
-- **Current branch:** `main`
-- **Latest commit:** none — still no commits anywhere in the tree.
-- **Working tree:** entirely untracked, unchanged (beyond this session's edits).
-- **Reminder:** always `cd /Users/gariyuu/Projects/sound-clash && pwd` to confirm at the start of a session.
+**Corrected 2026-08-07 (checkpoint pass) — this section was wrong as of every prior session's write-up.** `sound-clash` now has its own independent git repository and has had one since sometime after the sixth session's docs were written; the "no git repo anywhere" claim in `CLAUDE.md`/`DEPLOYMENT.md`/`CHANGELOG.md`/earlier `SESSION_LOG.md` entries reflected reality *at the time* but is stale.
+
+- **Repository root for git purposes:** `~/Projects/sound-clash` itself — it has its own `.git`, independent of the parent `~/Projects` tree.
+- **Remote:** `origin` → `https://github.com/Gariyuuu/sound-clash.git` (both fetch and push).
+- **Current branch:** `main`, up to date with `origin/main` (verified via `git fetch origin` — no divergence).
+- **Latest commits (`git log --oneline -5`):**
+  ```
+  d17c6c8 Fix live scoreboard not updating, redesign scoreboard, add live timer control
+  34a189e Soften AI bot timing, extend buzz timer, expand backgrounds to 20
+  8c1c4f7 Add genre filtering to Career Mode and playlist picker
+  c2c6c9c Hide YouTube video overlay during gameplay, add Career Mode entry point
+  ed88dd2 Initial commit: Sound Clash
+  ```
+- **Working tree:** clean, 0 uncommitted changes, 0 ahead/behind `origin/main` (as of this checkpoint pass).
+- **Whether Vercel's git integration (auto-deploy-on-push) is connected is unconfirmed** — `.vercel/project.json` exists (see `DEPLOYMENT.md`) but this checkpoint did not run `vercel git connect`/inspect dashboard settings. Don't assume either way; verify with `vercel git ls` or the dashboard before relying on push-to-deploy.
+- **Reminder:** always `cd /Users/gariyuu/Projects/sound-clash && pwd && git status` to confirm at the start of a session.
 
 ## What changed this session
 
@@ -55,6 +79,8 @@ npx next build       → exit 0, 40 routes generated (originally: using dummy DA
 ```
 
 Re-run and confirmed clean immediately before writing this update, after all changes described above. **The Vercel production build (`vercel --prod`) also succeeded against the real infrastructure** — same 40-ish routes, deployed and serving real traffic at the live URL above.
+
+**Re-verified 2026-08-07 (checkpoint pass, against the current tree including the four undocumented commits above):** `npx tsc --noEmit` → exit 0, 0 errors. `npm run lint` → exit 0, 0 findings. `npm run build` → exit 0, 44 routes generated (up from 40 — the new `/career` page and the AI-opponent routes account for the growth). The `ably`/SWC build workaround (`next.config.ts`'s `serverExternalPackages: ["ably"]` + `scripts/webpack/fix-ably-super.cjs`) is still in place, unmodified, and the build still succeeds with it — the underlying `ably`-bundle parser bug has **not** been fixed upstream and the workaround is still required; do not remove it. Neon (`@neondatabase/serverless` in `src/lib/db/client.ts`), Drizzle (`src/lib/db/schema.ts`), Clerk (`@clerk/nextjs` in `src/middleware.ts` + 9 other files), and Ably (`ably` package, used in 21 files across API routes, hooks, and `lib/ably/`, `lib/game/`) are all genuinely wired into the code, not just declared as dependencies — confirmed via `grep -rl` across `src/`, not just `package.json`.
 
 ## What still has NOT been verified
 

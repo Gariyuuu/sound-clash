@@ -1,9 +1,17 @@
 # Changelog
 
-No prior version history exists for this project (no git commits, no
-previously-maintained changelog — the repository's `README.md` was, until
-this entry, still the unedited `create-next-app` boilerplate). This file
-starts here.
+This file started as prose changelog entries written before the project had
+real git history (no commits existed yet at the time — the repository's
+`README.md` was, until then, still the unedited `create-next-app`
+boilerplate). **Correction (2026-08-07 checkpoint pass):** the project now
+has its own git repository, pushed to `https://github.com/Gariyuuu/sound-clash.git`
+(see `PROJECT_STATE.md`'s "Git state") — the "no git commits" framing below
+describes a past state, not the current one. `git log --oneline` is now the
+authoritative commit history; this file remains a human-readable summary
+layered on top of it, but is not fully caught up with the five real commits
+that now exist — see `PROJECT_STATE.md`'s "Documentation gap" for the four
+most recent, undocumented-here commits (Career Mode, genre filtering,
+background expansion, scoreboard fix).
 
 ## [Unreleased] — 2026-08-06 — Backend migrated: Supabase → Neon + Drizzle + Clerk + Ably
 
