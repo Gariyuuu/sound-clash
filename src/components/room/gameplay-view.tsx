@@ -244,6 +244,7 @@ export function GameplayView({ code }: { code: string }) {
               videoId={currentRound.youtubeVideoId}
               startSeconds={currentRound.clipStartSeconds}
               durationSeconds={currentRound.clipDurationSeconds}
+              coverUrl={currentRound.coverUrlBlurred}
             />
           ) : currentRound.spotifyPreviewUrl ? (
             <SpotifyPreviewPlayer previewUrl={currentRound.spotifyPreviewUrl} coverUrl={currentRound.coverUrlBlurred} />

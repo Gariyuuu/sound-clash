@@ -70,6 +70,9 @@ export default function Home() {
             <div className="flex flex-col items-center gap-4 mt-4">
               <div className="flex flex-wrap items-center justify-center gap-3">
                 <CreateRoomButton />
+                <Button size="lg" variant="outline" render={<Link href="/career" />} className="h-14 px-8 text-base">
+                  🤖 Career Mode
+                </Button>
               </div>
               <span className="text-sm text-muted-foreground">or join a friend&apos;s room</span>
               <JoinRoomCard />
