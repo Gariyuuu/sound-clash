@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { Music, Upload, Disc3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { PlaylistRow } from "@/types/database";
+import { GENRE_LABELS, GENRE_KEYS, type GenreKey } from "@/lib/game/genres";
 
 type PlaylistWithCount = PlaylistRow & { songs: { count: number }[] };
 
@@ -31,16 +32,18 @@ export function PlaylistPicker({
 }) {
   const [playlists, setPlaylists] = useState<PlaylistWithCount[]>([]);
   const [loading, setLoading] = useState(true);
+  const [genreFilter, setGenreFilter] = useState<GenreKey | "all">("all");
   const [importOpen, setImportOpen] = useState(false);
   const [importSource, setImportSource] = useState<"youtube" | "spotify">("youtube");
   const [importUrl, setImportUrl] = useState("");
   const [importName, setImportName] = useState("");
+  const [importGenre, setImportGenre] = useState<GenreKey | "none">("none");
   const [importing, setImporting] = useState(false);
 
-  async function refresh() {
+  async function refresh(genre: GenreKey | "all" = genreFilter) {
     setLoading(true);
     try {
-      const { playlists } = await api.listPlaylists();
+      const { playlists } = await api.listPlaylists(genre !== "all" ? { genre } : undefined);
       setPlaylists(playlists);
     } finally {
       setLoading(false);
@@ -48,18 +51,21 @@ export function PlaylistPicker({
   }
 
   useEffect(() => {
-    refresh();
-  }, []);
+    refresh(genreFilter);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [genreFilter]);
 
   async function handleImport() {
     if (!importUrl.trim() || !importName.trim()) return;
     setImporting(true);
     try {
+      const genre = importGenre === "none" ? undefined : importGenre;
       if (importSource === "youtube") {
         const { playlist, songCount } = await api.importYoutubePlaylist({
           playlistUrl: importUrl.trim(),
           name: importName.trim(),
           ownerId,
+          genre,
         });
         toast.success(`Imported ${songCount} songs into "${playlist.name}"`);
         onSelect(playlist.id);
@@ -68,6 +74,7 @@ export function PlaylistPicker({
           playlistUrl: importUrl.trim(),
           name: importName.trim(),
           ownerId,
+          genre,
         });
         toast.success(`Imported ${songCount} songs into "${playlist.name}"`);
         if (warning) toast.warning(warning);
@@ -76,6 +83,7 @@ export function PlaylistPicker({
       setImportOpen(false);
       setImportUrl("");
       setImportName("");
+      setImportGenre("none");
       await refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to import playlist.");
@@ -134,6 +142,34 @@ export function PlaylistPicker({
                     : "Requires SPOTIFY_CLIENT_ID/SECRET — see README.md. Not every track has a 30s preview available from Spotify."}
                 </p>
               </div>
+              <div className="flex flex-col gap-1.5">
+                <Label>Genre (optional)</Label>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setImportGenre("none")}
+                    className={cn(
+                      "rounded-full px-3 py-1 text-xs border transition",
+                      importGenre === "none" ? "border-primary bg-primary/15 text-primary" : "border-white/10 bg-white/5 text-muted-foreground"
+                    )}
+                  >
+                    None
+                  </button>
+                  {GENRE_KEYS.map((g) => (
+                    <button
+                      key={g}
+                      type="button"
+                      onClick={() => setImportGenre(g)}
+                      className={cn(
+                        "rounded-full px-3 py-1 text-xs border transition",
+                        importGenre === g ? "border-primary bg-primary/15 text-primary" : "border-white/10 bg-white/5 text-muted-foreground"
+                      )}
+                    >
+                      {GENRE_LABELS[g]}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
             <DialogFooter>
               <Button onClick={handleImport} disabled={importing}>
@@ -144,11 +180,39 @@ export function PlaylistPicker({
         </Dialog>
       </div>
 
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => setGenreFilter("all")}
+          className={cn(
+            "rounded-full px-3 py-1 text-xs border transition",
+            genreFilter === "all" ? "border-primary bg-primary/15 text-primary" : "border-white/10 bg-white/5 text-muted-foreground"
+          )}
+        >
+          All genres
+        </button>
+        {GENRE_KEYS.map((g) => (
+          <button
+            key={g}
+            type="button"
+            onClick={() => setGenreFilter(g)}
+            className={cn(
+              "rounded-full px-3 py-1 text-xs border transition",
+              genreFilter === g ? "border-primary bg-primary/15 text-primary" : "border-white/10 bg-white/5 text-muted-foreground"
+            )}
+          >
+            {GENRE_LABELS[g]}
+          </button>
+        ))}
+      </div>
+
       {loading ? (
         <p className="text-sm text-muted-foreground">Loading playlists...</p>
       ) : playlists.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          No playlists yet — import one from YouTube or run <code>npm run db:seed</code> for a demo set.
+          {genreFilter === "all"
+            ? <>No playlists yet — import one from YouTube or run <code>npm run db:seed</code> for a demo set.</>
+            : "No playlists tagged with that genre yet — import one and tag it, or pick a different genre."}
         </p>
       ) : (
         <div className="grid sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto">
@@ -172,7 +236,10 @@ export function PlaylistPicker({
               )}
               <div className="min-w-0">
                 <div className="font-medium text-sm truncate">{p.name}</div>
-                <div className="text-xs text-muted-foreground">{p.songs?.[0]?.count ?? 0} songs · {p.source}</div>
+                <div className="text-xs text-muted-foreground">
+                  {p.songs?.[0]?.count ?? 0} songs · {p.source}
+                  {p.genre && p.genre in GENRE_LABELS ? ` · ${GENRE_LABELS[p.genre as GenreKey]}` : ""}
+                </div>
               </div>
             </button>
           ))}

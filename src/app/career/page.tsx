@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useIdentity } from "@/lib/hooks/use-identity";
 import { api } from "@/lib/api-client";
 import { CAREER_OPPONENTS, CAREER_TOTAL_OPPONENTS } from "@/lib/game/career";
+import { GENRE_LABELS, GENRE_KEYS, type GenreKey } from "@/lib/game/genres";
 import { LogoFull } from "@/components/branding/logo";
 import { NavAuthLinks } from "@/components/home/nav-auth-links";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ export default function CareerModePage() {
   const identity = useIdentity();
   const router = useRouter();
   const [startingLevel, setStartingLevel] = useState<number | null>(null);
+  const [genre, setGenre] = useState<GenreKey | "any">("any");
 
   const careerLevel = identity.profile?.career_level ?? 0;
 
@@ -27,8 +29,13 @@ export default function CareerModePage() {
     const opponent = CAREER_OPPONENTS[level - 1]!;
     setStartingLevel(level);
     try {
-      const { playlists } = await api.listPlaylists();
-      const playlistId = playlists[0]?.id;
+      const { playlists } = await api.listPlaylists(genre !== "any" ? { genre } : undefined);
+      let playlistId = playlists[0]?.id;
+      if (!playlistId && genre !== "any") {
+        // Fall back to any playlist rather than blocking the battle over a genre that has no tagged playlists yet.
+        const { playlists: anyPlaylists } = await api.listPlaylists();
+        playlistId = anyPlaylists[0]?.id;
+      }
       if (!playlistId) {
         toast.error("No playlists available yet — import one from the home page first.");
         return;
@@ -94,6 +101,35 @@ export default function CareerModePage() {
         <>
           <div className="glass rounded-xl px-4 py-3 text-center text-sm text-muted-foreground">
             {careerLevel}/{CAREER_TOTAL_OPPONENTS} opponents defeated
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Genre</span>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setGenre("any")}
+                className={cn(
+                  "rounded-full px-3 py-1 text-xs border transition",
+                  genre === "any" ? "border-primary bg-primary/15 text-primary" : "border-white/10 bg-white/5 text-muted-foreground"
+                )}
+              >
+                Any genre
+              </button>
+              {GENRE_KEYS.map((g) => (
+                <button
+                  key={g}
+                  type="button"
+                  onClick={() => setGenre(g)}
+                  className={cn(
+                    "rounded-full px-3 py-1 text-xs border transition",
+                    genre === g ? "border-primary bg-primary/15 text-primary" : "border-white/10 bg-white/5 text-muted-foreground"
+                  )}
+                >
+                  {GENRE_LABELS[g]}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="flex flex-col gap-2">
