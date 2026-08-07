@@ -8,7 +8,7 @@ import { SCORE_VALUES } from "@/lib/game/types";
 import type { ChaosRuleKey } from "@/lib/game/types";
 import { buildRevealPayload } from "@/lib/game/round-payload";
 import { eliminatesOnWrongAnswer } from "@/lib/game/rules";
-import { publish, gameChannel } from "@/lib/ably/publish";
+import { publish, gameChannel, roomChannel } from "@/lib/ably/publish";
 import { aiAccuracyFor } from "@/lib/game/ai-bot";
 import type { AIDifficulty, AnswerCategory, RoomSettings, SongRow } from "@/types/database";
 
@@ -162,7 +162,10 @@ export async function resolveRoundAnswer(params: ResolveAnswerParams): Promise<R
           .set({ score: teammate.score + total })
           .where(eq(room_players.id, teammate.id))
           .returning();
-        if (updatedTeammate) await publish(gameChannel(game.id), "answer_insert", updatedTeammate);
+        if (updatedTeammate) {
+          await publish(gameChannel(game.id), "answer_insert", updatedTeammate);
+          await publish(roomChannel(game.room_id), "player_upsert", updatedTeammate);
+        }
       }
     }
 
@@ -179,7 +182,10 @@ export async function resolveRoundAnswer(params: ResolveAnswerParams): Promise<R
     const allPlayers = await db.query.room_players.findMany({ where: eq(room_players.room_id, game.room_id) });
     const scoreboard = allPlayers.map((p) => ({ playerId: p.id, score: p.score }));
 
-    if (updatedPlayer) await publish(gameChannel(game.id), "answer_insert", updatedPlayer);
+    if (updatedPlayer) {
+      await publish(gameChannel(game.id), "answer_insert", updatedPlayer);
+      await publish(roomChannel(game.room_id), "player_upsert", updatedPlayer);
+    }
     if (updatedRound) await publish(gameChannel(game.id), "round_update", updatedRound);
 
     return { status: 200, body: { correct: true, total, breakdown, scoreboard } };
@@ -191,7 +197,10 @@ export async function resolveRoundAnswer(params: ResolveAnswerParams): Promise<R
     .set({ streak: 0 })
     .where(eq(room_players.id, playerId))
     .returning();
-  if (resetPlayer) await publish(gameChannel(game.id), "answer_insert", resetPlayer);
+  if (resetPlayer) {
+    await publish(gameChannel(game.id), "answer_insert", resetPlayer);
+    await publish(roomChannel(game.room_id), "player_upsert", resetPlayer);
+  }
 
   const stealPenalty = settings.stealEnabled ? settings.stealPenalty : 0;
   const penalty = computeIncorrectPenalty(isSteal, stealPenalty);
@@ -202,7 +211,10 @@ export async function resolveRoundAnswer(params: ResolveAnswerParams): Promise<R
       .set({ score: Math.max(0, (player?.score ?? 0) + penalty) })
       .where(eq(room_players.id, playerId))
       .returning();
-    if (penalized) await publish(gameChannel(game.id), "answer_insert", penalized);
+    if (penalized) {
+      await publish(gameChannel(game.id), "answer_insert", penalized);
+      await publish(roomChannel(game.room_id), "player_upsert", penalized);
+    }
   }
 
   if (eliminatesOnWrongAnswer(settings)) {
@@ -211,7 +223,10 @@ export async function resolveRoundAnswer(params: ResolveAnswerParams): Promise<R
       .set({ is_spectator: true })
       .where(eq(room_players.id, playerId))
       .returning();
-    if (eliminated) await publish(gameChannel(game.id), "answer_insert", eliminated);
+    if (eliminated) {
+      await publish(gameChannel(game.id), "answer_insert", eliminated);
+      await publish(roomChannel(game.room_id), "player_upsert", eliminated);
+    }
   }
 
   const nextExcluded = [...round.excluded_player_ids, playerId];

@@ -4,7 +4,7 @@ import { db } from "@/lib/db/client";
 import { game_rounds, games, room_players, songs, round_locks } from "@/lib/db/schema";
 import { buildRevealPayload } from "@/lib/game/round-payload";
 import { computeIncorrectPenalty } from "@/lib/scoring/engine";
-import { publish, gameChannel } from "@/lib/ably/publish";
+import { publish, gameChannel, roomChannel } from "@/lib/ably/publish";
 import type { RoomSettings } from "@/types/database";
 
 // Called by the host's client, which is the round's timing authority on this
@@ -48,10 +48,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ rou
       const penalty = computeIncorrectPenalty(isSteal, settings.stealEnabled ? settings.stealPenalty : 0);
       if (penalty !== 0) {
         const player = await db.query.room_players.findFirst({ where: eq(room_players.id, lock.player_id) });
-        await db
+        const [penalized] = await db
           .update(room_players)
           .set({ score: Math.max(0, (player?.score ?? 0) + penalty) })
-          .where(eq(room_players.id, lock.player_id));
+          .where(eq(room_players.id, lock.player_id))
+          .returning();
+        if (penalized) await publish(roomChannel(game.room_id), "player_upsert", penalized);
       }
 
       const nextExcluded = [...round.excluded_player_ids, lock.player_id];

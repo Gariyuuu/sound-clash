@@ -21,7 +21,7 @@ import { FloatingScorePopups } from "@/components/game/floating-score-popups";
 import { RoundRevealOverlay } from "@/components/game/round-reveal-overlay";
 import { SplashScreen } from "@/components/branding/splash-screen";
 import { Button } from "@/components/ui/button";
-import { Pause, Play, SkipForward } from "lucide-react";
+import { Pause, Play, SkipForward, Timer, Minus, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
 import { sfx } from "@/lib/sound/synth";
@@ -202,6 +202,16 @@ export function GameplayView({ code }: { code: string }) {
     }
   }
 
+  async function handleSetTimer(seconds: number) {
+    if (!selfPlayerId) return;
+    try {
+      await api.control(code, { requesterPlayerId: selfPlayerId, action: "set_timer", timerSeconds: seconds });
+      toast.success(`Buzz timer set to ${seconds}s — takes effect next round.`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to change the timer.");
+    }
+  }
+
   if (loading || !room || !currentRound) {
     return <SplashScreen label="Loading round..." />;
   }
@@ -225,7 +235,29 @@ export function GameplayView({ code }: { code: string }) {
           )}
         </div>
         {self?.isHost && (
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 rounded-lg border border-white/10 px-1.5 h-8">
+              <Timer className="size-3.5 text-muted-foreground" />
+              <Button
+                size="icon"
+                variant="ghost"
+                className="size-6"
+                disabled={room.settings.timerSeconds <= 5}
+                onClick={() => handleSetTimer(room.settings.timerSeconds - 5)}
+              >
+                <Minus className="size-3" />
+              </Button>
+              <span className="text-xs font-mono tabular-nums w-7 text-center">{room.settings.timerSeconds}s</span>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="size-6"
+                disabled={room.settings.timerSeconds >= 30}
+                onClick={() => handleSetTimer(room.settings.timerSeconds + 5)}
+              >
+                <Plus className="size-3" />
+              </Button>
+            </div>
             <Button size="sm" variant="outline" onClick={() => handleControl(paused ? "resume" : "pause")}>
               {paused ? <Play className="size-3.5" /> : <Pause className="size-3.5" />}
               {paused ? "Resume" : "Pause"}
