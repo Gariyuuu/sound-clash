@@ -46,7 +46,7 @@ export const DEFAULT_ROOM_SETTINGS: RoomSettings = {
   songCount: 20,
   source: "youtube",
   mode: "classic",
-  timerSeconds: 10,
+  timerSeconds: 20,
   hintsEnabled: true,
   hintTypes: ["first_letter", "year", "genre"],
   categories: ["title", "artist"],

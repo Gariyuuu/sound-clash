@@ -186,7 +186,7 @@ export function HostSettingsPanel({ code, ownerId }: { code: string; ownerId?: s
         </div>
         <Slider
           min={5}
-          max={20}
+          max={30}
           step={1}
           value={[settings.timerSeconds]}
           onValueChange={(value) => {

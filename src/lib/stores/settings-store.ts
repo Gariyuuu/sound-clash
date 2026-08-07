@@ -17,6 +17,12 @@ export type ThemeBackground =
   | "music_studio"
   | "vinyl"
   | "dark_room"
+  | "aurora"
+  | "desert"
+  | "midnight_city"
+  | "sakura"
+  | "volcano"
+  | "frost"
   | "minimal"
   | "custom";
 

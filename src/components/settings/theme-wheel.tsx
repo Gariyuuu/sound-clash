@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { THEME_BACKGROUNDS } from "@/lib/theme-backgrounds";
+import { THEME_BACKGROUNDS, THEME_PALETTES } from "@/lib/theme-backgrounds";
 import type { ThemeBackground } from "@/lib/stores/settings-store";
 import { cn } from "@/lib/utils";
 
@@ -86,6 +86,13 @@ export function ThemeWheel({ options, labels, value, onChange }: ThemeWheelProps
         >
           <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Background</span>
           <span className="text-sm font-bold">{labels[value]}</span>
+          {value !== "custom" && (
+            <div className="flex gap-1 mt-1.5">
+              {THEME_PALETTES[value].map((color, i) => (
+                <span key={i} className="size-2.5 rounded-full border border-white/20" style={{ backgroundColor: color }} />
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Pointer at the top, marking the "selected" slot */}

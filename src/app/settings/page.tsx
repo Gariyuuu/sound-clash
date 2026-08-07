@@ -30,6 +30,12 @@ const BACKGROUND_LABELS: Record<ThemeBackground, string> = {
   music_studio: "Music Studio",
   vinyl: "Vinyl",
   dark_room: "Dark Room",
+  aurora: "Aurora",
+  desert: "Desert",
+  midnight_city: "Midnight City",
+  sakura: "Sakura",
+  volcano: "Volcano",
+  frost: "Frost",
   minimal: "Minimal",
   custom: "Custom",
 };
