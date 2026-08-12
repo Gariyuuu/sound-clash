@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { eq, and, desc, inArray, sql } from "drizzle-orm";
-import { db } from "@/lib/db/client";
+import { db, safeQuery } from "@/lib/db/client";
 import { rooms, room_players } from "@/lib/db/schema";
 import { generateRoomCode } from "@/lib/game/room-code";
 import { DEFAULT_ROOM_SETTINGS, type RoomSettings } from "@/types/database";
@@ -83,28 +83,36 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const limit = Number(url.searchParams.get("limit") ?? 20);
 
-  const publicRooms = await db
-    .select()
-    .from(rooms)
-    .where(and(eq(rooms.is_public, true), eq(rooms.status, "lobby")))
-    .orderBy(desc(rooms.created_at))
-    .limit(limit);
+  const publicRooms = await safeQuery(
+    () =>
+      db
+        .select()
+        .from(rooms)
+        .where(and(eq(rooms.is_public, true), eq(rooms.status, "lobby")))
+        .orderBy(desc(rooms.created_at))
+        .limit(limit),
+    []
+  );
 
   if (publicRooms.length === 0) return NextResponse.json({ rooms: [] });
 
-  const counts = await db
-    .select({ room_id: room_players.room_id, count: sql<number>`count(*)`.mapWith(Number) })
-    .from(room_players)
-    .where(
-      and(
-        inArray(
-          room_players.room_id,
-          publicRooms.map((r) => r.id)
-        ),
-        eq(room_players.is_spectator, false)
-      )
-    )
-    .groupBy(room_players.room_id);
+  const counts = await safeQuery(
+    () =>
+      db
+        .select({ room_id: room_players.room_id, count: sql<number>`count(*)`.mapWith(Number) })
+        .from(room_players)
+        .where(
+          and(
+            inArray(
+              room_players.room_id,
+              publicRooms.map((r) => r.id)
+            ),
+            eq(room_players.is_spectator, false)
+          )
+        )
+        .groupBy(room_players.room_id),
+    []
+  );
 
   const countByRoom = new Map(counts.map((c) => [c.room_id, c.count]));
   const roomsWithCount = publicRooms.map((r) => ({

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { eq, and, desc, sql, inArray } from "drizzle-orm";
-import { db } from "@/lib/db/client";
+import { db, safeQuery } from "@/lib/db/client";
 import { playlists, songs } from "@/lib/db/schema";
 
 export async function GET(request: Request) {
@@ -15,19 +15,27 @@ export async function GET(request: Request) {
   if (decade) conditions.push(eq(playlists.decade, decade));
   if (mood) conditions.push(eq(playlists.mood, mood));
 
-  const rows = await db
-    .select()
-    .from(playlists)
-    .where(and(...conditions))
-    .orderBy(desc(playlists.created_at))
-    .limit(60);
+  const rows = await safeQuery(
+    () =>
+      db
+        .select()
+        .from(playlists)
+        .where(and(...conditions))
+        .orderBy(desc(playlists.created_at))
+        .limit(60),
+    []
+  );
 
   const counts = rows.length
-    ? await db
-        .select({ playlist_id: songs.playlist_id, count: sql<number>`count(*)`.mapWith(Number) })
-        .from(songs)
-        .where(inArray(songs.playlist_id, rows.map((r) => r.id)))
-        .groupBy(songs.playlist_id)
+    ? await safeQuery(
+        () =>
+          db
+            .select({ playlist_id: songs.playlist_id, count: sql<number>`count(*)`.mapWith(Number) })
+            .from(songs)
+            .where(inArray(songs.playlist_id, rows.map((r) => r.id)))
+            .groupBy(songs.playlist_id),
+        []
+      )
     : [];
   const countByPlaylist = new Map(counts.map((c) => [c.playlist_id, c.count]));
 

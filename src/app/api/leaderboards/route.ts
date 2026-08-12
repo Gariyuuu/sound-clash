@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { desc, asc, isNotNull } from "drizzle-orm";
-import { db } from "@/lib/db/client";
+import { db, safeQuery } from "@/lib/db/client";
 import { profiles } from "@/lib/db/schema";
 
 const SORTABLE_COLUMNS = {
@@ -39,15 +39,18 @@ export async function GET(request: Request) {
 
   // Fastest buzz is "lower is better," and nulls (never buzzed) must be excluded
   // rather than sorted first — everything else is a standard descending sort.
-  const entries =
-    type === "fastest_buzz"
-      ? await db
-          .select(selectFields)
-          .from(profiles)
-          .where(isNotNull(profiles.fastest_buzz_ms))
-          .orderBy(asc(profiles.fastest_buzz_ms))
-          .limit(limit)
-      : await db.select(selectFields).from(profiles).orderBy(desc(column)).limit(limit);
+  const entries = await safeQuery(
+    () =>
+      type === "fastest_buzz"
+        ? db
+            .select(selectFields)
+            .from(profiles)
+            .where(isNotNull(profiles.fastest_buzz_ms))
+            .orderBy(asc(profiles.fastest_buzz_ms))
+            .limit(limit)
+        : db.select(selectFields).from(profiles).orderBy(desc(column)).limit(limit),
+    []
+  );
 
   return NextResponse.json({ type, entries });
 }
