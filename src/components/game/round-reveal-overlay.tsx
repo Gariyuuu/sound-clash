@@ -49,7 +49,7 @@ export function RoundRevealOverlay({
         )}
         <div>
           <p className="text-sm text-muted-foreground uppercase tracking-wide">The song was</p>
-          <h2 className="text-2xl font-extrabold">{reveal.title}</h2>
+          <h2 className="reveal-title-fx text-2xl font-extrabold">{reveal.title}</h2>
           <p className="text-lg text-muted-foreground">
             {reveal.artist}
             {reveal.featuredArtist ? ` ft. ${reveal.featuredArtist}` : ""}
