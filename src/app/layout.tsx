@@ -18,16 +18,32 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://sound-clash-nu.vercel.app";
+const TITLE = "Sound Clash — Multiplayer Music Guessing Game";
+const DESCRIPTION =
+  "Buzz in, guess the song, and clash for the win. A fast, social multiplayer music guessing game for you and your friends.";
+
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
+  metadataBase: new URL(SITE_URL),
   title: {
-    default: "Sound Clash — Multiplayer Music Guessing Game",
+    default: TITLE,
     template: "%s · Sound Clash",
   },
-  description:
-    "Buzz in, guess the song, and clash for the win. A fast, social multiplayer music guessing game for you and your friends.",
+  description: DESCRIPTION,
   applicationName: "Sound Clash",
   keywords: ["music game", "multiplayer", "song guessing", "party game", "Sound Clash"],
+  openGraph: {
+    type: "website",
+    url: SITE_URL,
+    siteName: "Sound Clash",
+    title: TITLE,
+    description: DESCRIPTION,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: TITLE,
+    description: DESCRIPTION,
+  },
 };
 
 export const viewport: Viewport = {
