@@ -169,12 +169,34 @@ html[data-colorblind="true"] {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html[data-reduced-motion="true"] *,
-  html[data-reduced-motion="true"] *::before,
-  html[data-reduced-motion="true"] *::after {
+  /* Unconditional: the OS-level setting must work on its own. The
+     data-attribute rule below is an ADDITIONAL layer for the in-app
+     toggle (Settings), not the only way this ever fires — previously
+     this whole block was gated behind html[data-reduced-motion="true"],
+     which defaults to false and is never initialized from matchMedia, so
+     a user with OS reduced-motion on but who never opened Settings got
+     zero motion reduction anywhere in the app. */
+  *, *::before, *::after {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
+  }
+
+  /* .reveal-title-fx: verified via computed styles (not just reading the
+     keyframes) that collapsing animation-duration alone is NOT enough —
+     fill-mode defaults to none, so once the (near-instant) animation
+     finishes, text-shadow reverts to nothing instead of holding the last
+     keyframe's full glow. Explicit static override instead. Duplicated
+     into both reduced-motion gates below (OS media query + the in-app
+     toggle's non-media-query block) since they're independent rule sets. */
+  .reveal-title-fx {
+    animation: none !important;
+    opacity: 1 !important;
+    text-shadow:
+      0 0 4px var(--ink),
+      0 0 11px var(--ink-2),
+      0 0 24px var(--ink-2),
+      0 0 48px var(--ink-2) !important;
   }
 }
 
@@ -184,4 +206,43 @@ html[data-reduced-motion="true"] *::after {
   animation-duration: 0.001ms !important;
   animation-iteration-count: 1 !important;
   transition-duration: 0.001ms !important;
+}
+
+html[data-reduced-motion="true"] .reveal-title-fx {
+  animation: none !important;
+  opacity: 1 !important;
+  text-shadow:
+    0 0 4px var(--ink),
+    0 0 11px var(--ink-2),
+    0 0 24px var(--ink-2),
+    0 0 48px var(--ink-2) !important;
+}
+
+/* Round-reveal title effect (text-effects.colorion.co, MIT — adapted:
+   typography left to the existing Tailwind classes, only the color-token
+   + glow-flicker animation is taken from the source). Content-agnostic
+   (pure text-shadow/opacity, no baked-in characters) so it works on any
+   song title. */
+.reveal-title-fx {
+  --ink: var(--primary);
+  --ink-2: var(--accent);
+  animation: fx-neon 3.2s linear infinite;
+}
+@keyframes fx-neon {
+  0%, 18%, 21%, 24%, 100% {
+    opacity: 1;
+    text-shadow:
+      0 0 4px var(--ink),
+      0 0 11px var(--ink-2),
+      0 0 24px var(--ink-2),
+      0 0 48px var(--ink-2);
+  }
+  19%, 22%, 62% {
+    opacity: .35;
+    text-shadow: none;
+  }
+  63%, 64.5% {
+    opacity: .6;
+    text-shadow: 0 0 4px var(--ink-2);
+  }
 }
