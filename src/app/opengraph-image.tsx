@@ -1,4 +1,17 @@
 import { ImageResponse } from "next/og";
+import { SparkMark } from "@/components/branding/logo";
+
+/**
+ * next/og resolves text glyphs through its emoji provider, which only covers
+ * real pictographs. U+2726 BLACK FOUR POINTED STAR has no emoji presentation,
+ * so no font is loaded for it and it renders as a tofu box. (Its neighbour
+ * U+2728 SPARKLES does, which is why this is easy to miss.)
+ */
+const RENDERABLE_AS_TEXT = /\p{Extended_Pictographic}/u;
+
+/** The brand mark uses U+2726, so this always takes the SparkMark path today --
+ *  the guard is what keeps it correct if the mark ever changes. */
+const MARK = "✦";
 
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
@@ -30,7 +43,11 @@ export default function OpengraphImage() {
               background: "linear-gradient(135deg, #1ED760 0%, #7C3AED 100%)",
             }}
           >
-            <div style={{ fontSize: 56, color: "white" }}>✦</div>
+            {RENDERABLE_AS_TEXT.test(MARK) ? (
+              <div style={{ fontSize: 56, color: "white" }}>{MARK}</div>
+            ) : (
+              <SparkMark size={52} />
+            )}
           </div>
           <div
             style={{
