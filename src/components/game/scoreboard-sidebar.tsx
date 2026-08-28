@@ -47,7 +47,7 @@ function ScoreboardRow({
       )}
     >
       <div
-        className="absolute inset-y-0 left-0 bg-primary/10 transition-all duration-700 ease-out"
+        className="absolute inset-y-0 left-0 bg-primary/10 transition-[width] duration-700 ease-out"
         style={{ width: `${barWidth}%` }}
       />
       <AnimatePresence>
