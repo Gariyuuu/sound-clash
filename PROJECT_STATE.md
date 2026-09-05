@@ -1,6 +1,27 @@
 # Project State
 
-**Last updated:** 2026-08-07 (checkpoint/verification pass — see "Documentation gap" below; this pass did not do product feature work, only verification + doc corrections)
+**Last updated:** 2026-09-05 (W4 game-loop overhaul — UI/interaction only; the 2026-08-07 checkpoint content below is unchanged and still current)
+
+## Most recent pass: W4 game-loop overhaul (2026-09-05)
+
+Presentation and interaction only. No gameplay, scoring, realtime, schema or API
+behaviour was changed; the one non-UI edit is `MAX_PLAYERS` moving from a literal
+in the join route to `src/lib/game/types.ts` so three call sites agree.
+
+Adopted the portfolio's shared `GAME-LOOP.css` v1.0 layer (vendored to
+`src/app/design-system/game-loop.css`) and fixed five defects it surfaced — the
+results screen congratulating every player regardless of placement being the
+largest. Full detail in `SESSION_LOG.md`; the design mapping is in `UI_SYSTEM.md`.
+
+`tsc`/`lint`/`build` clean. Verified in a real browser against `next start` with
+the live Neon/Ably env, including a real room created via the API. The full
+buzz → answer → results loop still has not been played by a human (unchanged
+gap, see below), so the three outcome states were verified as computed CSS in
+all three motion settings rather than by finishing a match.
+
+**One defect was found and deliberately not fixed:** the light theme is not
+designed — see `UI_SYSTEM.md`'s "Known defect" and the new top item in
+`TASKS.md`'s High priority.
 
 This file is a point-in-time snapshot. It will go stale the moment more work
 happens — update it every session (see `CLAUDE.md` → "Permanent rules").

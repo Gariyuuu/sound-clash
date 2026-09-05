@@ -1,8 +1,9 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Crown, Eye, MoreVertical, Wifi, WifiOff } from "lucide-react";
+import { Check, Crown, Eye, MoreVertical, UserPlus, Wifi, WifiOff } from "lucide-react";
 import { useRoomStore } from "@/lib/stores/room-store";
+import { MAX_PLAYERS } from "@/lib/game/types";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,6 +22,13 @@ export function PlayerList({ code }: { code: string }) {
   const self = selfPlayerId ? players[selfPlayerId] : null;
   const isTeamMode = room?.settings.mode === "team_battle" && room.status === "lobby";
   const TEAM_OPTIONS = ["A", "B"];
+  const seated = list.filter((p) => !p.isSpectator).length;
+  const openSeats = Math.max(0, MAX_PLAYERS - seated);
+
+  function copyInvite() {
+    navigator.clipboard.writeText(`${window.location.origin}/room/${code}`);
+    toast.success("Invite link copied!");
+  }
 
   async function handleKick(targetPlayerId: string, ban: boolean) {
     if (!selfPlayerId) return;
@@ -53,7 +61,7 @@ export function PlayerList({ code }: { code: string }) {
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-          Players ({list.filter((p) => !p.isSpectator).length}/20)
+          Players ({seated}/{MAX_PLAYERS})
         </h3>
         {self && !self.isSpectator && (
           <button
@@ -76,10 +84,13 @@ export function PlayerList({ code }: { code: string }) {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className={cn(
-                "glass rounded-xl p-3 flex items-center gap-2.5 relative",
-                p.connectionStatus === "disconnected" && "opacity-50"
-              )}
+              data-you={p.id === selfPlayerId ? "true" : undefined}
+              /* "absent" (dotted) is a seat whose player left mid-lobby — a
+               * different thing from a seat nobody took (dashed, below). The
+               * ready state is carried by the check + word already in the row,
+               * so it does not also claim the perimeter channel. */
+              data-seat={p.connectionStatus === "disconnected" ? "absent" : undefined}
+              className="gl-seat seat-surface flex-row items-center gap-2.5 relative"
             >
               <div className="text-2xl">{p.avatarEmoji}</div>
               <div className="flex-1 min-w-0">
@@ -95,9 +106,13 @@ export function PlayerList({ code }: { code: string }) {
                   ) : (
                     <WifiOff className="size-3" />
                   )}
-                  {p.isSpectator ? "Spectator" : `${p.score} pts`}
+                  {p.connectionStatus === "connected"
+                    ? p.isSpectator
+                      ? "Spectator"
+                      : `${p.score} pts`
+                    : "Disconnected"}
                   {p.team && (
-                    <span className="rounded bg-white/10 px-1.5 text-[10px] font-semibold">Team {p.team}</span>
+                    <span className="rounded bg-white/10 px-1.5 text-xs font-semibold">Team {p.team}</span>
                   )}
                 </div>
                 {isTeamMode && self?.isHost && !p.isSpectator && (
@@ -106,9 +121,11 @@ export function PlayerList({ code }: { code: string }) {
                       <button
                         key={t}
                         onClick={() => handleAssignTeam(p.id, t)}
+                        aria-label={`Assign ${p.displayName} to team ${t}`}
+                        aria-pressed={p.team === t}
                         className={cn(
-                          "rounded px-1.5 py-0.5 text-[10px] font-semibold border",
-                          p.team === t ? "border-primary bg-primary/20 text-primary" : "border-white/10 text-muted-foreground"
+                          "rounded px-2 py-0.5 text-xs font-semibold border transition-colors",
+                          p.team === t ? "border-primary bg-primary/20 text-primary" : "border-white/10 text-muted-foreground hover:text-foreground"
                         )}
                       >
                         {t}
@@ -133,6 +150,28 @@ export function PlayerList({ code }: { code: string }) {
             </motion.div>
           ))}
         </AnimatePresence>
+
+        {/* The open seat. This lobby previously rendered joined players and
+         * nothing else, so a room waiting on friends looked identical to a
+         * room that was full — the only capacity cue was "(3/20)" in a header
+         * above. One dashed seat carries both the state and the action. */}
+        {openSeats > 0 && (
+          <motion.button
+            layout
+            type="button"
+            onClick={copyInvite}
+            data-seat="empty"
+            className="gl-seat flex-row items-center gap-2.5 text-left hover:opacity-100 transition-opacity"
+          >
+            <UserPlus className="size-5 text-muted-foreground shrink-0" aria-hidden />
+            <span className="min-w-0">
+              <span className="gl-seat-name block">Open seat</span>
+              <span className="block text-xs text-muted-foreground">
+                {openSeats} left · copy invite
+              </span>
+            </span>
+          </motion.button>
+        )}
       </div>
     </div>
   );

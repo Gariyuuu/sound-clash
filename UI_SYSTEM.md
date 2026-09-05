@@ -111,3 +111,84 @@ Not specified anywhere (no `browserslist` config in `package.json`). Relies on T
 
 - The brand mark exists in three independently-maintained forms (`logo.tsx` React component, `icon.svg` static file, `apple-icon.tsx`/`opengraph-image.tsx` `next/og` JSX) — see `FILE_MAP.md`'s warning that changing the logo requires updating all of them, since none is generated from a shared source.
 - `--color-clash-green`/`-violet`/`-pink` tokens are declared but inconsistently used — some components reference them, others (like `logo.tsx`) hardcode the same hex values directly in SVG gradient stops.
+
+---
+
+## Game-loop layer (portfolio group W4) — added 2026-09-05
+
+`src/app/design-system/game-loop.css` is a **vendored copy** of
+`~/Projects/.design-system/GAME-LOOP.css` v1.0, the shared surface language for
+the eleven competitive/social games in the portfolio's W4 overhaul group. It is
+imported in `globals.css` immediately after `master.css`.
+
+**Never patch the vendored copy.** Fix the canonical file and re-vendor; the
+copy carries a header saying so, and `md5` against the source detects drift.
+
+It supplies four primitives this app previously hand-rolled or lacked:
+
+| Primitive | Classes | Where it lands here |
+|---|---|---|
+| Seat / lobby list | `.gl-seat`, `.gl-seat-name`, `data-you`, `data-seat="empty\|absent"` | `PlayerList` — filled seats, the disconnected (dotted) state, and the open seat |
+| Turn feedback | `.gl-turn[data-turn="you\|them\|idle"]` | the readout strip in `GameplayView`, and the buzz-holder row in `ScoreboardSidebar` |
+| Outcome motion | `.gl-outcome[data-outcome="win\|lose\|draw"]`, `.gl-outcome-detail`, `.gl-burst` | `ResultsView`'s heading |
+| Spectator readout | `.gl-readout`, `.gl-phase`, `.gl-score` | the strip above the player/scoreboard grid in `GameplayView` |
+
+The token slots (`--gl-win`, `--gl-lose`, `--gl-draw`, `--gl-turn-you`,
+`--gl-turn-them`, `--gl-outcome-ink`, `--gl-seat-line`) are bound to this app's
+semantic tokens in `:root`, so `.dark` and `html[data-colorblind="true"]`
+re-tint the whole layer without restating a single game value.
+
+### `.seat-surface`, and why `.glass` is not used on a seat
+
+`.glass` paints its own border. A seat's entire non-colour channel *is* its
+border — dashed means empty, dotted means absent, 2px means you — and `.glass`
+is defined later in the same cascade layer, so it silently wins and erases all
+three. `.seat-surface` is `.glass` minus the border: fill and shadow only.
+
+### Reduced motion has two gates here, and the layer only ships one
+
+`GAME-LOOP.css` guards itself with an OS `prefers-reduced-motion` media query.
+This app has a **second, independent gate** — the in-app Settings toggle, which
+sets `html[data-reduced-motion="true"]` — and that one collapses animation
+durations rather than cancelling animations. Collapsing resolves an element to
+its *last* keyframe, which is safe for every `gl-*` animation except two:
+
+- `.gl-burst` ends at `opacity .12 / scale 1.35`, so it would leave a permanent
+  faint glow over the outcome card instead of disappearing.
+- `.gl-turn` breathe ends at `opacity .68`, leaving the "your turn" badge
+  stuck dimmed.
+
+Both are restated for the in-app gate at the bottom of `globals.css`. Verified
+by reading computed styles in a real browser in all three states (no reduce, OS
+reduce, in-app toggle) — not by reading the keyframes.
+
+### JavaScript motion is not covered by either gate
+
+`useMotionOff()` (`src/lib/hooks/use-motion-off.ts`) returns true when *either*
+source asks for reduced motion. Framer Motion `animate` props and
+`canvas-confetti` never touch the CSS properties the two gates collapse, so
+anything driven from JS must ask the hook itself. Currently used by the buzzer's
+pulse, the results confetti/fanfare, and the podium entrance.
+
+## Known defect: the light theme is not designed (found 2026-09-05, NOT fixed)
+
+`/settings` offers Light / Dark / System and defaults to System, so a player on
+a light-mode OS gets the light token set. `BackgroundLayer` then paints the
+chosen preset as a `fixed inset-0` layer behind all content **in both schemes**,
+and 19 of the 20 presets are dark (the default, `neon`, is `#0a0e17`). The
+result is the light scheme's near-black text (`--foreground: oklch(0.18 …)`)
+rendered on a near-black gradient. Verified in a browser at 1280×720: the
+"Room name", "Songs per game", "Game mode" and "Buzz timer" labels on
+`/room/[code]` are effectively unreadable.
+
+This is app-wide, predates this pass, and is **not** a game-loop issue. Fixing
+it properly means light variants for `.glass`/`.glass-strong`/`.neon-*` and
+converting the 46 hardcoded `white/<alpha>` utilities across 15 files to a
+token — a light-theme design pass, out of scope for a W4 adoption.
+
+It has one direct consequence recorded in `globals.css`: the outcome colours
+are deliberately **not** re-tuned per scheme. Measured against `--background`
+the light values fail AA (2.18:1 win, 2.73:1 lose) and a darkened pair was
+briefly written to fix that — but `--background` is not what a player sees.
+Against the preset that actually paints, the semantic tokens measure 8.43:1 and
+6.71:1, and darkening them would have made the biggest word in the game worse.

@@ -7,7 +7,15 @@ import { useRoomStore } from "@/lib/stores/room-store";
 import { cn } from "@/lib/utils";
 import type { RoomPlayerSnapshot } from "@/lib/game/types";
 
-const RANK_MEDALS = ["🥇", "🥈", "🥉"];
+/* Rank was three emoji (🥇🥈🥉). They render in a different family from every
+ * other glyph in the row, are a different optical size per platform, and are
+ * announced as "1st place medal" by a screen reader mid-sentence. A numeral in
+ * the app's own type, with weight carrying the top three, says the same thing. */
+const RANK_TONE = [
+  "border-amber-400/60 text-amber-300",
+  "border-white/25 text-foreground/80",
+  "border-amber-700/50 text-amber-600/90",
+];
 
 function ScoreboardRow({
   player,
@@ -39,10 +47,16 @@ function ScoreboardRow({
   return (
     <motion.div
       layout
+      data-turn={isBuzzHolder ? (isSelf ? "you" : "them") : undefined}
       className={cn(
         "relative overflow-hidden rounded-xl px-2.5 py-2 text-sm border transition-colors",
         rank === 1 ? "border-amber-400/30 bg-gradient-to-r from-amber-500/15 to-transparent" : "border-white/5",
-        isBuzzHolder && "ring-2 ring-primary",
+        // Your buzz and an opponent's used to be the SAME ring-2 ring-primary,
+        // so the only cue for which was which was recognising your own name in
+        // a sidebar you are not looking at. Weight is the channel now, with a
+        // word below; hue is last and never alone.
+        isBuzzHolder && isSelf && "ring-2 ring-[var(--gl-turn-you)]",
+        isBuzzHolder && !isSelf && "ring-1 ring-[var(--gl-turn-them)]",
         isSelf && "font-semibold"
       )}
     >
@@ -62,8 +76,13 @@ function ScoreboardRow({
         )}
       </AnimatePresence>
       <div className="relative flex items-center gap-2">
-        <span className="w-5 text-center text-xs shrink-0">
-          {rank <= 3 ? RANK_MEDALS[rank - 1] : <span className="text-muted-foreground">{rank}</span>}
+        <span
+          className={cn(
+            "grid size-5 shrink-0 place-items-center rounded-full border text-xs font-bold tabular-nums",
+            rank <= 3 ? RANK_TONE[rank - 1] : "border-transparent font-medium text-muted-foreground"
+          )}
+        >
+          {rank}
         </span>
         <span className="text-base shrink-0">{player.avatarEmoji}</span>
         <span className="flex-1 min-w-0 truncate flex items-center gap-1">
@@ -77,7 +96,7 @@ function ScoreboardRow({
               className="flex items-center gap-0.5 text-orange-400 shrink-0"
             >
               <Flame className="size-3" />
-              <span className="text-[10px] font-bold">{player.streak}</span>
+              <span className="text-xs font-bold tabular-nums">{player.streak}</span>
             </motion.span>
           )}
         </span>
@@ -94,6 +113,15 @@ function ScoreboardRow({
           {player.score}
         </motion.span>
       </div>
+      {isBuzzHolder && (
+        <p className="relative mt-1 text-xs font-bold uppercase tracking-wider text-[var(--gl-turn-them)]">
+          {isSelf ? (
+            <span className="text-[var(--gl-turn-you)]">Your answer</span>
+          ) : (
+            "Answering"
+          )}
+        </p>
+      )}
     </motion.div>
   );
 }

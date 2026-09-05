@@ -11,7 +11,7 @@ import { aiBuzzDelayMs } from "@/lib/game/ai-bot";
 import type { AnswerCategory } from "@/types/database";
 import type { RevealedHint, RoundBroadcastPayload, RoundRevealPayload } from "@/lib/game/types";
 import { LogoFull } from "@/components/branding/logo";
-import { BuzzerButton } from "@/components/game/buzzer-button";
+import { BuzzerButton, type BuzzerBlock } from "@/components/game/buzzer-button";
 import { AnswerPanel } from "@/components/game/answer-panel";
 import { HintsPanel } from "@/components/game/hints-panel";
 import { YoutubePlayer } from "@/components/game/youtube-player";
@@ -218,6 +218,44 @@ export function GameplayView({ code }: { code: string }) {
 
   const canBuzz = (phase === "listening" || phase === "steal") && !self?.isSpectator && !isExcluded && !paused;
 
+  // Why the buzzer is unavailable, most specific reason first — a dimmed
+  // circle on its own told a locked-out player nothing about which of the
+  // four possible reasons applied to them.
+  const buzzBlock: BuzzerBlock = self?.isSpectator
+    ? "spectating"
+    : paused
+      ? "paused"
+      : isExcluded
+        ? "answered"
+        : "waiting";
+
+  // Spectator readout: phase + leader + whose turn, in one strip, so somebody
+  // who is not playing can answer "what is happening?" from a screenshot.
+  const ranked = Object.values(players)
+    .filter((p) => !p.isSpectator)
+    .sort((a, b) => b.score - a.score);
+  const leader = ranked[0] ?? null;
+  const phaseLabel = paused
+    ? "Paused"
+    : phase === "listening"
+      ? `Listening · round ${currentRound.roundNumber}/${currentRound.totalRounds}`
+      : phase === "locked"
+        ? "Answering"
+        : phase === "steal"
+          ? "Steal round"
+          : "Reveal";
+  const turnState = phase === "locked" ? (isBuzzHolder ? "you" : "them") : "idle";
+  const turnLabel =
+    phase === "locked"
+      ? isBuzzHolder
+        ? "Your answer"
+        : `${buzzHolderName ?? "Someone"} answering`
+      : phase === "steal"
+        ? "Anyone can steal"
+        : phase === "resolved"
+          ? "Round over"
+          : "Buzzers open";
+
   return (
     <div className="flex-1 max-w-6xl w-full mx-auto p-4 sm:p-6 flex flex-col gap-6">
       <FloatingScorePopups />
@@ -266,6 +304,19 @@ export function GameplayView({ code }: { code: string }) {
               <SkipForward className="size-3.5" /> Skip
             </Button>
           </div>
+        )}
+      </div>
+
+      <div className="gl-readout">
+        <span className="gl-phase">{phaseLabel}</span>
+        <span className="gl-turn" data-turn={turnState}>
+          {turnLabel}
+        </span>
+        {leader && (
+          <span className="flex items-center gap-2 ml-auto text-sm text-muted-foreground">
+            <span className="max-w-32 truncate">Leading · {leader.displayName}</span>
+            <span className="gl-score text-foreground">{leader.score}</span>
+          </span>
         )}
       </div>
 
@@ -323,14 +374,11 @@ export function GameplayView({ code }: { code: string }) {
               </motion.div>
             ) : (
               <motion.div key="buzzer" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                <BuzzerButton disabled={!canBuzz} locked={false} isSelf={false} onBuzz={handleBuzz} />
+                <BuzzerButton disabled={!canBuzz} block={buzzBlock} onBuzz={handleBuzz} />
               </motion.div>
             )}
           </AnimatePresence>
 
-          {isExcluded && phase !== "resolved" && (
-            <p className="text-sm text-muted-foreground">You already answered this round — waiting for it to resolve.</p>
-          )}
           {paused && (
             <p className="text-sm text-amber-400 font-semibold">Game paused by the host.</p>
           )}

@@ -4,8 +4,7 @@ import { db } from "@/lib/db/client";
 import { rooms, room_players, room_messages } from "@/lib/db/schema";
 import { publish, roomChannel } from "@/lib/ably/publish";
 import { rateLimit, clientKeyFromRequest } from "@/lib/rate-limit";
-
-const MAX_PLAYERS = 20;
+import { MAX_PLAYERS } from "@/lib/game/types";
 
 interface JoinBody {
   displayName: string;

@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "./design-system/master.css";
+@import "./design-system/game-loop.css";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
@@ -85,6 +86,21 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.624 0 0);
+
+  /* ---- GAME-LOOP v1.0 slots (W4) --------------------------------------
+   * Bound to semantic tokens so every scheme and the colourblind palette
+   * re-tint the layer for free. Sound Clash has no true draw: the only tie
+   * is a shared final placement, so --gl-draw stays neutral rather than
+   * borrowing the win hue. Not re-tuned per scheme — see the note below the
+   * colourblind block for why the light scheme is measured against the
+   * preset gradient, not --background. */
+  --gl-win:  var(--primary);
+  --gl-lose: var(--destructive);
+  --gl-draw: var(--muted-foreground);
+  --gl-turn-you:  var(--primary);
+  --gl-turn-them: var(--muted-foreground);
+  --gl-outcome-ink: var(--primary-foreground);
+  --gl-seat-line: var(--border);
 }
 
 .dark {
@@ -140,6 +156,14 @@
   .glass-strong {
     @apply bg-white/[0.1] backdrop-blur-2xl border border-white/15 shadow-[0_8px_40px_rgba(0,0,0,0.35)];
   }
+  /* .glass for a surface that is ALSO a .gl-seat. Deliberately borderless:
+   * .glass paints its own border, which would win over the game-loop layer
+   * (same cascade layer, defined later) and silently erase the seat's whole
+   * non-colour channel — dashed=empty, dotted=absent, 2px=you. Fill and
+   * shadow only; the perimeter belongs to the seat. */
+  .seat-surface {
+    @apply bg-white/[0.06] backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.25)];
+  }
   .neon-text {
     @apply bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-violet-400;
   }
@@ -168,6 +192,23 @@ html[data-colorblind="true"] {
   --accent: oklch(0.75 0.18 70);
   --destructive: oklch(0.7 0.19 55);
 }
+
+/* ---- A note on measuring these ----------------------------------------
+ * The outcome colours are NOT re-tuned for the light scheme, and that was a
+ * deliberate reversal during this pass. Measured against --background, the
+ * light values fail AA (2.18:1 win, 2.73:1 lose) and a darkened pair was
+ * written to fix it — but --background is not what a player actually sees.
+ * BackgroundLayer paints the chosen preset as a `fixed inset-0` layer behind
+ * all content in BOTH schemes, and 19 of the 20 presets are dark (the default
+ * is "neon", #0a0e17). So the real backdrop for this text is the preset, the
+ * semantic tokens measure 8.43:1 / 6.71:1 against it, and darkening them for
+ * a background that never shows would have made the outcome word WORSE in the
+ * app as it actually renders. Verified in a browser, not from the stylesheet.
+ *
+ * The underlying defect this uncovered — the light scheme paints dark-scheme
+ * text tokens over a dark preset gradient, app-wide, not just here — is real
+ * and is recorded in UI_SYSTEM.md and the portfolio punch list. It is a light
+ * theme design pass across ~15 files, not a W4 game-loop change. */
 
 @media (prefers-reduced-motion: reduce) {
   /* Unconditional: the OS-level setting must work on its own. The
@@ -207,6 +248,25 @@ html[data-reduced-motion="true"] *::after {
   animation-duration: 0.001ms !important;
   animation-iteration-count: 1 !important;
   transition-duration: 0.001ms !important;
+}
+
+/* GAME-LOOP's own reduce block is an OS media query only, and this app has a
+ * SECOND, independent gate (the in-app Settings toggle). The blanket rule above
+ * collapses a duration, which resolves an element to its LAST keyframe — safe
+ * for every gl-* animation except two, which is why they are restated here:
+ *   .gl-burst  ends at opacity .12 / scale 1.35, so collapsing it leaves a
+ *              permanent faint glow sitting over the outcome card forever.
+ *   .gl-turn   breathe ends at opacity .68, i.e. the "your turn" badge would
+ *              be stuck dimmed — the one badge that must not be.
+ * Verified by computed style with the toggle on, not by reading keyframes. */
+html[data-reduced-motion="true"] .gl-burst {
+  display: none !important;
+}
+html[data-reduced-motion="true"] .gl-turn[data-turn="you"],
+html[data-reduced-motion="true"] .gl-seat[data-seat="ready"] .gl-pip,
+html[data-reduced-motion="true"] .gl-score[data-ticked="true"] {
+  animation: none !important;
+  opacity: 1 !important;
 }
 
 html[data-reduced-motion="true"] .reveal-title-fx {

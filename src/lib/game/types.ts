@@ -1,5 +1,13 @@
 import type { AnswerCategory, GameModeKey, RoomSettings } from "@/types/database";
 
+/**
+ * Room capacity. Lives here because three places need to agree on it: the
+ * join route that enforces it, the lobby header that prints it, and the open
+ * seat the lobby now renders. It was previously a lone literal in the API
+ * route with the UI hardcoding "/20" beside it.
+ */
+export const MAX_PLAYERS = 20;
+
 // ----------------------------------------------------------------------------
 // Realtime channel contract
 //

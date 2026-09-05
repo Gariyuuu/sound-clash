@@ -1,0 +1,467 @@
+/* VENDORED from ~/Projects/.design-system/GAME-LOOP.css v1.0 — do not edit here.
+ * Source of truth is the portfolio game-loop layer (overhaul group W4).
+ * Re-vendor, never patch in place. Requires MASTER.css v1.2 imported first. */
+/* ============================================================================
+ * PORTFOLIO GAME-LOOP LAYER  v1.0
+ * Companion to MASTER.css v1.2 — NOT a replacement. Import order is always:
+ *
+ *     MASTER.css  ->  GAME-LOOP.css  ->  overrides/<project>.css  ->  globals.css
+ *
+ * SCOPE: the eleven competitive/social games of overhaul group W4
+ * (buildstrike-arena, chamber-seven, complete-shelf-demo, deckhouse,
+ *  full-house, pocket-party, project-messenger, puzzle-rush, sound-clash,
+ *  vantage-chess, voidshift).
+ *
+ * WHY A SEPARATE LAYER AND NOT MORE OF MASTER:
+ * MASTER encodes what EVERY repo needs (focus, overflow, reduce floor, --input).
+ * These four patterns are needed by exactly the repos that have a lobby and a
+ * scoreboard, and would be dead tokens in the other 104. MASTER's own README
+ * calls that out as chronos's dead-token problem. So: separate file, vendored
+ * only where it is used.
+ *
+ * THE FOUR PATTERNS, and the audit finding behind each:
+ *
+ *  1 SEAT / LOBBY LIST   Every W4 lobby hand-rolls its own "player slot" and
+ *                        every one of them renders an unfilled slot as a box
+ *                        containing an em-dash or the word "Waiting…". A player
+ *                        cannot tell an empty seat from a broken one. The seat
+ *                        is the primitive; the empty state ships WITH it.
+ *
+ *  2 TURN FEEDBACK       "Your turn" vs "waiting" was signalled by hue alone in
+ *                        every repo that had it at all. Hue alone fails the same
+ *                        way MASTER's chart rule fails: the one user who cannot
+ *                        resolve the hue is the one who most needs the signal.
+ *                        Here the distinction is carried by BORDER WEIGHT +
+ *                        A WORD + (optionally) motion, with hue last.
+ *
+ *  3 OUTCOME MOTION      win / lose / draw must be distinguishable with the
+ *                        sound off, the colour gone, and the text unread — so
+ *                        they differ in the SHAPE of the motion, not its colour:
+ *                        win RISES, lose SETTLES, draw CONVERGES.
+ *                        Budget: <= 1.5s, measured below. Nothing here blocks
+ *                        input; the buttons under an outcome card are live from
+ *                        frame one.
+ *
+ *  4 SPECTATOR READOUT   The standing question: can somebody who is not playing
+ *                        tell what is happening at a glance? Answer = one
+ *                        persistent strip carrying PHASE + SCORE + WHOSE TURN,
+ *                        at body-copy size or larger, never below --text-xs.
+ *
+ * THE ONE HARD RULE IN THIS FILE — every @keyframes here RESTS ON ITS VISIBLE
+ * STATE. No animation's final keyframe is opacity:0 or a non-identity transform.
+ * MASTER's reduce clamp resolves an element to its LAST keyframe, so an
+ * outcome banner that animated *out* would be invisible for reduced-motion
+ * users — which is exactly the vantage-chess .fx-stamp defect MASTER documents.
+ * Anything that must disappear does so by unmounting or by a JS timeout, never
+ * by ending a keyframe at zero.
+ * ========================================================================= */
+
+@layer tokens {
+  :root {
+    /* ---- OUTCOME / TURN COLOUR SLOTS ---------------------------------
+     * SLOTS, not values. Every W4 repo has its own palette and must keep it.
+     * They default to currentColor so an unconfigured repo degrades to
+     * "inherits the text colour" — legible — rather than to an off-brand hue.
+     * Re-tint per project and verify >= 3:1 on the surface it lands on:
+     *     python3 tools/contrast.py <value> <surface>                    */
+    --gl-win:        currentColor;
+    --gl-lose:       currentColor;
+    --gl-draw:       currentColor;
+    --gl-turn-you:   var(--ring, currentColor);
+    --gl-turn-them:  currentColor;
+
+    /* Ink ON a win/lose fill. Same reasoning as MASTER's --accent-ink:
+     * the slot exists because nobody writes it by taste and every repo
+     * that skipped it shipped 2:1 text on a saturated fill.              */
+    --gl-outcome-ink: var(--accent-ink, currentColor);
+
+    /* ---- SEAT ---------------------------------------------------------
+     * An empty seat is a DASHED perimeter, a filled one is SOLID. That is a
+     * non-colour channel, so it survives greyscale, CVD and a dimmed screen. */
+    --gl-seat-radius:      var(--radius-lg, 0.625rem);
+    --gl-seat-border:      1px;
+    --gl-seat-border-you:  2px;   /* the local player's seat is heavier      */
+    --gl-seat-empty-dash:  6 5;   /* matches MASTER's --series-dash-2 rhythm  */
+
+    /* ---- MOTION BUDGET ------------------------------------------------
+     * All three fit inside 1.5s with room to spare. They are deliberately
+     * NOT equal: a win is allowed to take longer than a loss, because a loss
+     * screen is the one the player wants to leave.                        */
+    --gl-dur-win:   820ms;
+    --gl-dur-lose:  700ms;
+    --gl-dur-draw:  620ms;
+    --gl-dur-burst: 1100ms;  /* decorative only; removed under reduce       */
+    --gl-dur-turn:  2400ms;  /* the your-turn breath, one slow cycle        */
+
+    /* MASTER already defines --ease-physical for direct manipulation. An
+     * outcome banner is not direct manipulation, but it IS a physical
+     * object arriving, so the overshoot reads correctly. Reuse, don't
+     * redefine — a second copy of the same cubic-bezier is how the
+     * portfolio ended up with six syntaxes for one border colour.         */
+    --gl-ease-arrive: var(--ease-physical, cubic-bezier(0.34, 1.56, 0.64, 1));
+    --gl-ease-settle: cubic-bezier(0.2, 0.8, 0.3, 1);
+  }
+}
+
+/* ============================================================================
+ * 1 · SEAT / LOBBY LIST
+ * ========================================================================= */
+@layer components {
+  .gl-seats {
+    display: grid;
+    gap: 0.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  }
+
+  .gl-seat {
+    position: relative;
+    display: flex;
+    align-content: start;
+    flex-direction: column;
+    gap: 0.375rem;
+    min-width: 0;                       /* G51: shrinkable, or names overflow */
+    padding: 0.625rem 0.75rem;
+    border-radius: var(--gl-seat-radius);
+    border: var(--gl-seat-border) solid var(--gl-seat-line, currentColor);
+    transition: var(--transition-ui, none);
+  }
+
+  /* The local player's own seat. Heavier perimeter, not a different hue —
+   * "which one am I" must survive a screenshot with the colour stripped. */
+  .gl-seat[data-you="true"] {
+    border-width: var(--gl-seat-border-you);
+  }
+
+  /* EMPTY. Dashed perimeter + reduced ink. This is the state every repo in
+   * the group rendered as a blank box, and it is the single most common
+   * "is it broken?" moment in a lobby. It ships with the primitive so it
+   * cannot be forgotten. Content is supplied by the app (an invite action,
+   * a "waiting for players" line) — the layer only guarantees it LOOKS
+   * deliberately empty rather than failed. */
+  .gl-seat[data-seat="empty"] {
+    border-style: dashed;
+    opacity: 0.72;
+  }
+  .gl-seat[data-seat="empty"] .gl-seat-name {
+    font-style: italic;
+    font-weight: 500;
+    /* Synthetic obliques lean past their advance width, and .gl-seat-name
+       clips with text-overflow — without this the last glyph loses its tail.
+       Seen on chamber-seven's display face. */
+    padding-inline-end: 0.12em;
+  }
+
+  /* A seat whose occupant left mid-match is NOT the same as a seat nobody
+   * ever took, and reading them the same way is why "did they quit or did
+   * they never join?" is unanswerable in four of these games. */
+  .gl-seat[data-seat="absent"] {
+    border-style: dotted;
+    opacity: 0.55;
+  }
+
+  .gl-seat-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    font-size: var(--text-xs, 0.75rem);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .gl-seat-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: var(--text-sm, 0.875rem);
+    font-weight: 700;
+  }
+
+  /* Ready pip. The pip is redundant with the word beside it BY DESIGN —
+   * never ship the pip alone. */
+  .gl-pip {
+    display: inline-block;
+    width: 0.5rem;
+    height: 0.5rem;
+    flex: none;
+    border-radius: var(--radius-full, 9999px);
+    background: currentColor;
+  }
+  .gl-seat[data-seat="ready"] .gl-pip { animation: gl-pip-ready 1.8s ease-in-out infinite; }
+
+  /* ---- EMPTY STATE BLOCK ------------------------------------------------
+   * For a lobby list with NO rows at all (no open rooms, no match history).
+   * Restrained on purpose: an icon at feature size, one line of what this is,
+   * one line of what to do. MASTER's README rule 2 (do not flatten to pass a
+   * number) applies to illustration too — no cartoon fills this space.     */
+  .gl-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 2.5rem 1.25rem;
+    text-align: center;
+    border-radius: var(--radius-xl, 0.875rem);
+    border: 1px dashed var(--gl-seat-line, currentColor);
+  }
+  .gl-empty-icon { opacity: 0.5; }
+  .gl-empty-title {
+    font-size: var(--text-sm, 0.875rem);
+    font-weight: 700;
+  }
+  .gl-empty-body {
+    font-size: var(--text-xs, 0.75rem);   /* the 12px floor, never below */
+    max-width: 34ch;
+    opacity: 0.7;
+  }
+}
+
+/* ============================================================================
+ * 2 · TURN FEEDBACK
+ *
+ * Three states, three channels each. Hue is the THIRD channel, never the first.
+ *
+ *   data-turn="you"      2px solid  · the word "Your turn"     · slow breath
+ *   data-turn="them"     1px solid  · the word "Waiting"       · no motion
+ *   data-turn="idle"     1px dashed · whatever the app says     · no motion
+ *
+ * The breath is the only always-on animation in this file. It is 2.4s, opacity
+ * only (no transform, no filter), on one element — well inside the vestibular
+ * budget and cheap enough not to show up in a frame profile. It is removed
+ * entirely under reduce, where the 2px border and the word still carry it.
+ * ========================================================================= */
+@layer components {
+  .gl-turn {
+    display: inline-flex;
+    align-items: center;
+    /* A pill dropped into a stretched flex/grid row inflates to the row height
+       and, with radius-full, becomes an oval. Caught in the harness on a
+       body{display:grid;height:100%} page. Both guards are one line each and
+       the badge is never meant to stretch. */
+    align-self: center;
+    width: fit-content;
+    gap: 0.5rem;
+    padding: 0.375rem 0.75rem;
+    border-radius: var(--radius-full, 9999px);
+    border: 1px solid currentColor;
+    font-size: var(--text-xs, 0.75rem);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    transition: var(--transition-ui, none);
+  }
+
+  .gl-turn[data-turn="you"] {
+    border-width: 2px;
+    color: var(--gl-turn-you);
+    animation: gl-turn-breathe var(--gl-dur-turn) ease-in-out infinite;
+  }
+  .gl-turn[data-turn="them"] {
+    color: var(--gl-turn-them);
+    opacity: 0.72;
+  }
+  .gl-turn[data-turn="idle"] {
+    border-style: dashed;
+    opacity: 0.55;
+  }
+
+  /* Applied to the board/table container, not the badge: a hairline ring that
+   * says "input is live here". Same 2px-vs-1px logic, so a spectator scanning
+   * a four-board grid can see which board is waiting on a human. */
+  .gl-live[data-turn="you"] {
+    outline: 2px solid var(--gl-turn-you);
+    outline-offset: 3px;
+  }
+}
+
+/* ============================================================================
+ * 3 · OUTCOME MOTION
+ *
+ * Distinguishable with colour removed, because the MOTION SHAPE differs:
+ *
+ *   win    rises and overshoots      (light, upward, springy)      820ms
+ *   lose   drops and settles heavy   (downward, damped, no bounce) 700ms
+ *   draw   two halves converge       (horizontal, symmetric)       620ms
+ *
+ * Every one rests on the visible identity state. See the hard rule at the top.
+ * ========================================================================= */
+@layer components {
+  .gl-outcome {
+    display: block;
+    font-weight: 900;
+    line-height: 1.05;
+    overflow-wrap: anywhere;    /* G51 — outcome strings are display type */
+    min-width: 0;
+  }
+  .gl-outcome[data-outcome="win"] {
+    color: var(--gl-win);
+    animation: gl-outcome-win var(--gl-dur-win) var(--gl-ease-arrive) both;
+  }
+  .gl-outcome[data-outcome="lose"] {
+    color: var(--gl-lose);
+    animation: gl-outcome-lose var(--gl-dur-lose) var(--gl-ease-settle) both;
+  }
+  .gl-outcome[data-outcome="draw"] {
+    color: var(--gl-draw);
+    animation: gl-outcome-draw var(--gl-dur-draw) var(--gl-ease-settle) both;
+  }
+
+  /* The card the outcome word sits in. Staggered so the word lands first and
+   * the numbers arrive under it — reading order matches arrival order. */
+  .gl-outcome-card { animation: gl-card-in 260ms var(--ease, ease-out) both; }
+  .gl-outcome-detail { animation: gl-detail-in 300ms var(--ease, ease-out) both; animation-delay: 180ms; }
+
+  /* Decorative celebration ring. PURELY decorative: it carries no information
+   * that is not already in the word above it, which is precisely why it is
+   * safe to delete under reduce. pointer-events:none so it can never eat the
+   * click on the Rematch button underneath. */
+  .gl-burst {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    animation: gl-burst var(--gl-dur-burst) var(--ease, ease-out) both;
+    background: radial-gradient(circle at 50% 42%, var(--gl-win) 0%, transparent 62%);
+    mix-blend-mode: screen;
+  }
+}
+
+/* ============================================================================
+ * 4 · SPECTATOR READOUT
+ *
+ * One strip. Phase, score, whose turn. The test is literal: take a screenshot,
+ * show it to somebody who has never seen the game, ask "what is happening?"
+ * If they cannot answer, the strip is wrong.
+ *
+ * Numerals are tabular EVERYWHERE. A score that reflows its own digits as it
+ * increments reads as a glitch, and it is one line of CSS to prevent.
+ * ========================================================================= */
+@layer components {
+  .gl-readout {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 1rem;
+    padding: 0.5rem 0.875rem;
+    border-radius: var(--radius-lg, 0.625rem);
+    border: 1px solid var(--gl-seat-line, currentColor);
+  }
+  .gl-phase {
+    font-size: var(--text-xs, 0.75rem);
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    opacity: 0.65;
+  }
+  .gl-score {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+    font-size: var(--text-xl, 1.25rem);
+    font-weight: 800;
+    line-height: 1;
+  }
+  /* Any number that changes during play. Applied broadly on purpose. */
+  .gl-num,
+  .gl-readout [data-num] {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+  }
+  .gl-score-sep { opacity: 0.4; }
+
+  /* Score tick. 180ms, weight+scale only, no colour change — a colour flash
+   * on a number is indistinguishable from an error state. */
+  .gl-score[data-ticked="true"] { animation: gl-score-tick 180ms var(--ease, ease-out); }
+}
+
+/* ============================================================================
+ * KEYFRAMES — every one rests on the visible identity state
+ * ========================================================================= */
+@keyframes gl-outcome-win {
+  0%   { opacity: 0; transform: translateY(14px) scale(0.9); }
+  60%  { opacity: 1; transform: translateY(-4px) scale(1.04); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes gl-outcome-lose {
+  0%   { opacity: 0; transform: translateY(-16px) scale(1.06); }
+  70%  { opacity: 1; transform: translateY(2px) scale(0.99); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes gl-outcome-draw {
+  0%   { opacity: 0; letter-spacing: 0.42em; }
+  100% { opacity: 1; letter-spacing: normal; }
+}
+@keyframes gl-card-in {
+  0%   { opacity: 0; transform: translateY(10px) scale(0.98); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes gl-detail-in {
+  0%   { opacity: 0; transform: translateY(6px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes gl-burst {
+  0%   { opacity: 0;    transform: scale(0.4); }
+  35%  { opacity: 0.55; transform: scale(1.05); }
+  100% { opacity: 0.12; transform: scale(1.35); }
+}
+@keyframes gl-score-tick {
+  0%   { transform: scale(1); }
+  45%  { transform: scale(1.16); }
+  100% { transform: scale(1); }
+}
+@keyframes gl-turn-breathe {
+  0%, 100% { opacity: 0.68; }
+  50%      { opacity: 1; }
+}
+@keyframes gl-pip-ready {
+  0%, 100% { opacity: 0.5; }
+  50%      { opacity: 1; }
+}
+
+/* ============================================================================
+ * REDUCED MOTION — static equivalents, NOT deletions
+ *
+ * DELIBERATELY UNLAYERED and declared AFTER MASTER's clamp, for the exact
+ * reason MASTER documents: for !important declarations the cascade-layer order
+ * is reversed, so a layered rule here would LOSE to a repo's own later rule
+ * and — worse — MASTER's clamp would resolve these animations to their last
+ * keyframe. That is safe for the three outcome animations (they rest visible,
+ * by the hard rule) but it is not the RIGHT result: an outcome should still
+ * announce itself, just without vestibular motion. So each gets an explicit
+ * minimal-motion equivalent instead of a 0.01ms flicker.
+ *
+ * WHAT SURVIVES REDUCE, AND WHY:
+ *   outcome word   -> 140ms opacity fade. It is the result of the match; it
+ *                     must still register as ARRIVING, or the screen appears
+ *                     to have always been there and the player misses it.
+ *   score tick     -> removed. The number itself is the signal.
+ *   turn breath    -> removed. 2px border + the word "Your turn" carry it.
+ *   celebration    -> REMOVED ENTIRELY (display:none). Pure decoration, and a
+ *                     scaling radial gradient is the single most vestibular
+ *                     thing in this file.
+ * ========================================================================= */
+@media (prefers-reduced-motion: reduce) {
+  .gl-outcome[data-outcome="win"],
+  .gl-outcome[data-outcome="lose"],
+  .gl-outcome[data-outcome="draw"],
+  .gl-outcome-card,
+  .gl-outcome-detail {
+    animation: gl-reduced-in 140ms linear both !important;
+    animation-delay: 0ms !important;
+    transform: none !important;
+    letter-spacing: normal !important;
+    opacity: 1;
+  }
+  .gl-burst { display: none !important; }
+  .gl-turn[data-turn="you"],
+  .gl-seat[data-seat="ready"] .gl-pip,
+  .gl-score[data-ticked="true"] {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+}
+@keyframes gl-reduced-in {
+  0%   { opacity: 0; }
+  100% { opacity: 1; }
+}
